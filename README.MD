@@ -1,7 +1,8 @@
 
 # 抖音网页版弹幕数据抓取
 
-
+抖音网页版弹幕数据抓取来源于
+https://github.com/saermart/DouyinLiveWebFetcher
 ### 环境：
 - windows 10
 - python 3.7+
@@ -16,25 +17,6 @@
 - ✅ 自动计算signature和a_bogus参数
 - ✅ 支持文字转语音(TTS)播放弹幕
 - ✅ 支持播放video目录下的视频文件
-
-
-## 有效测试：
-
-- [x] 2024/11/07 09:04 成功  测试成功,根据[PPG888](https://github.com/PPG888) 提出的[issue#74](https://github.com/saermart/DouyinLiveWebFetcher/issues/74)更新signature获取方式
-- [x] 2024/12/01 15:08 成功  测试成功
-- [x] 2024/12/11 15:08 成功  测试成功,添加赞赏渠道(thx :)
-- [x] 2025/01/27 18:43 成功  测试成功
-- [x] 2025/01/28 09:15 成功  测试成功，新年快乐！！
-- [x] 2025/06/22 21:09 成功  更新wss，测试成功
-- [x] 2025/07/05 21:10 成功  测试成功
-- [x] 2025/07/26 10:59 成功  测试成功
-- [x] 2025/08/05 09:02 成功  测试成功
-- [x] 2025/09/01 16:06 成功  测试成功
-- [x] 2025/09/10 16:39 成功  弹幕接口测试成功
-- [x] 2025/09/13 23:24 成功  测试成功,添加a_bogus参数
-- [x] 2025/09/27 16:14 成功  测试弹幕接口成功
-
-
 
 ## 抓取样例：
 ```
@@ -133,3 +115,50 @@ pip install -r requirements.txt
 
 - 按 'q' 键退出播放
 - 按空格键暂停/继续播放
+
+## 项目结构
+
+有关项目的详细结构，请参阅 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)
+
+## 开发指南
+
+有关如何进行二次开发和维护，请参阅 [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
+
+## 使用方式
+
+### 命令行方式
+
+```bash
+# 直接运行，需要提供直播间ID
+python main.py 50828500437
+
+# 运行GUI界面
+python main.py gui
+```
+
+### GUI方式
+
+```bash
+# 运行GUI主界面
+python gui/main_gui.py
+
+# 直接运行抖音弹幕抓取GUI
+python gui/douyin_gui.py
+```
+
+### TTS方式
+
+```bash
+# 运行带TTS功能的命令行版本
+python live_tts_main.py
+```
+
+## 配置说明
+
+### TTS配置
+
+TTS功能可以通过`tts_config.json`文件进行配置，也可以通过GUI界面的TTS配置面板进行配置。
+
+## 贡献
+
+欢迎提交Issue和Pull Request来帮助改进项目。
