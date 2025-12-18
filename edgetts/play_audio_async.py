@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+
+"""异步方式在内存中直接播放音频"""
+
+import asyncio
+import io
+import pygame
+import edge_tts
+
+TEXT1 = ["君不见，黄河之水天上来，奔流到海不复回。",
+"君不见，高堂明镜悲白发，朝如青丝暮成雪。"
+"人生得意须尽欢，莫使金樽空对月。",
+"天生我材必有用，千金散尽还复来。",
+"烹羊宰牛且为乐，会须一饮三百杯。",
+"岑夫子，丹丘生，将进酒，杯莫停。",
+"与君歌一曲，请君为我倾耳听。",
+"钟鼓馔玉不足贵，但愿长醉不复醒。",
+"古来圣贤皆寂寞，惟有饮者留其名。",
+"陈王昔时宴平乐，斗酒十千恣欢谑",
+"岑夫子，丹丘生，将进酒，杯莫停。",
+"与君歌一曲，请君为我倾耳听。",
+"钟鼓馔玉不足贵，但愿长醉不复醒。",
+"古来圣贤皆寂寞，惟有饮者留其名。",
+"陈王昔时宴平乐，斗酒十千恣欢谑。"
+]
+VOICE = "zh-CN-YunjianNeural"
+
+
+async def play_audio(audio_bytes):
+    """异步播放音频"""
+    # 初始化pygame mixer
+    pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=512)
+    pygame.mixer.init()
+    
+    # 将音频数据放入内存缓冲区
+    audio_buffer = io.BytesIO(bytes(audio_bytes))
+    
+    # 加载并播放音频
+    pygame.mixer.music.load(audio_buffer)
+    pygame.mixer.music.play()
+    
+    # 等待播放完成
+    while pygame.mixer.music.get_busy():
+        await asyncio.sleep(0.1)
+    
+    # 清理资源
+    pygame.mixer.quit()
+
+
+async def main(TEXT) -> None:
+    """Main function"""
+    communicate = edge_tts.Communicate(TEXT, VOICE, boundary="SentenceBoundary")
+    audio_bytes = bytearray()
+    
+    print("正在生成音频...")
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_bytes.extend(chunk["data"])
+    
+    if audio_bytes:
+        print("正在播放音频...")
+        await play_audio(audio_bytes)
+        print("播放完成!")
+    else:
+        print("未生成音频数据!")
+
+
+def play_text(text):
+    """播放文本"""
+    return main(text)
+if __name__ == "__main__":
+   for text in TEXT1:
+       asyncio.run(main(text))

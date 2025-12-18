@@ -1,0 +1,11 @@
+{
+  "tts_enabled": false,
+  "enter_tts_enabled": false,
+  "enter_tts_templates": [],
+  "follow_tts_enabled": false,
+  "follow_tts_templates": [],
+  "gift_tts_enabled": false,
+  "gift_tts_templates": [],
+  "keyword_tts_enabled": true,
+  "keywords": []
+}
