@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
     QTextEdit
 )
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QObject
-from PyQt5.QtGui import QTextCursor
+from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor
 
 from liveMan import DouyinLiveWebFetcher
 
@@ -239,6 +239,18 @@ class DouyinLiveGUI(QWidget):
         super().__init__()
         self.worker = None
         self.tts_config = {}
+        # 定义消息类型颜色
+        self.message_colors = {
+            'chat': QColor(0, 0, 0),           # 黑色 - 聊天消息
+            'gift': QColor(255, 0, 0),         # 红色 - 礼物消息
+            'like': QColor(0, 191, 255),       # 深天蓝 - 点赞消息
+            'member': QColor(0, 128, 0),       # 绿色 - 进场消息
+            'social': QColor(255, 20, 147),    # 深粉色 - 关注消息
+            'fansclub': QColor(128, 0, 128),   # 紫色 - 粉丝团消息
+            'control': QColor(128, 128, 128),  # 灰色 - 控制消息
+            'emoji_chat': QColor(255, 140, 0), # 深橙色 - 表情包消息
+            'default': QColor(0, 0, 0)         # 默认黑色
+        }
         self.init_ui()
         self.setup_timers()
         self.load_tts_config()
@@ -497,10 +509,28 @@ class DouyinLiveGUI(QWidget):
             
         # 添加到显示区域（统计信息除外）
         if msg_type != 'room_stats':
-            self.danmaku_display.append(display_text)
+            self.append_colored_text(display_text, msg_type)
         
         # 自动滚动到底部
         self.danmaku_display.moveCursor(QTextCursor.End)
+        
+    def append_colored_text(self, text, msg_type):
+        """使用指定颜色添加文本到显示区域"""
+        # 获取文本游标
+        cursor = self.danmaku_display.textCursor()
+        
+        # 创建文本格式
+        fmt = QTextCharFormat()
+        color = self.message_colors.get(msg_type, self.message_colors['default'])
+        fmt.setForeground(color)
+        
+        # 应用格式并插入文本
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertText(text + "\n", fmt)
+        
+        # 滚动到底部
+        self.danmaku_display.setTextCursor(cursor)
+        self.danmaku_display.ensureCursorVisible()
         
     def check_tts_trigger(self, msg_type, payload):
         """检查是否触发TTS播报"""
