@@ -19,6 +19,26 @@ from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor
 from liveMan import DouyinLiveWebFetcher
 
 
+def play_tts(text):
+    """
+    播放TTS文本
+    
+    Args:
+        text (str): 要播放的文本
+    """
+    def _play():
+        try:
+            import asyncio
+            from edgetts.play_audio_async import play_text
+            asyncio.run(play_text(text))
+        except Exception as e:
+            print(f"TTS播放出错: {e}")
+    
+    # 在新线程中播放TTS，避免阻塞GUI
+    tts_thread = threading.Thread(target=_play, daemon=True)
+    tts_thread.start()
+
+
 class TTSConfigDialog(QDialog):
     """TTS配置对话框"""
     
@@ -153,6 +173,20 @@ class TTSConfigDialog(QDialog):
                 
     def save_config(self):
         """保存配置"""
+        # 解析关键字与回复模板映射
+        keyword_reply_templates = {}
+        keyword_lines = self.keyword_mapping_text.toPlainText().split('\n')
+        for line in keyword_lines:
+            line = line.strip()
+            if line and '=' in line:
+                parts = line.split('=', 1)
+                if len(parts) == 2:
+                    keyword = parts[0].strip()
+                    templates_str = parts[1].strip()
+                    templates = [t.strip() for t in templates_str.split('|') if t.strip()]
+                    if keyword and templates:
+                        keyword_reply_templates[keyword] = templates
+        
         self.config = {
             'tts_enabled': self.tts_enabled.isChecked(),
             'enter_tts_enabled': self.enter_tts_enabled.isChecked(),
@@ -657,21 +691,3 @@ def main():
 if __name__ == '__main__':
     main()
 
-def play_tts(text):
-    """
-    播放TTS文本
-    
-    Args:
-        text (str): 要播放的文本
-    """
-    def _play():
-        try:
-            import asyncio
-            from edgetts.play_audio_async import play_text
-            asyncio.run(play_text(text))
-        except Exception as e:
-            print(f"TTS播放出错: {e}")
-    
-    # 在新线程中播放TTS，避免阻塞GUI
-    tts_thread = threading.Thread(target=_play, daemon=True)
-    tts_thread.start()
