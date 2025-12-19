@@ -6,6 +6,7 @@ import asyncio
 import io
 import pygame
 import edge_tts
+import threading
 
 TEXT1 = ["君不见，黄河之水天上来，奔流到海不复回。",
 "君不见，高堂明镜悲白发，朝如青丝暮成雪。"
@@ -25,49 +26,82 @@ TEXT1 = ["君不见，黄河之水天上来，奔流到海不复回。",
 ]
 VOICE = "zh-CN-YunjianNeural"
 
+# 全局锁，确保同一时间只有一个音频播放
+_audio_lock = threading.Lock()
+
 
 async def play_audio(audio_bytes):
     """异步播放音频"""
-    # 初始化pygame mixer
-    pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=512)
-    pygame.mixer.init()
+    # 如果锁已被占用，直接返回
+    if not _audio_lock.acquire(blocking=False):
+        print("警告: 上一个音频仍在播放中，跳过本次播放")
+        return
     
-    # 将音频数据放入内存缓冲区
-    audio_buffer = io.BytesIO(bytes(audio_bytes))
-    
-    # 加载并播放音频
-    pygame.mixer.music.load(audio_buffer)
-    pygame.mixer.music.play()
-    
-    # 等待播放完成
-    while pygame.mixer.music.get_busy():
-        await asyncio.sleep(0.1)
-    
-    # 清理资源
-    pygame.mixer.quit()
+    try:
+        # 初始化pygame mixer
+        pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=512)
+        pygame.mixer.init()
+        
+        # 将音频数据放入内存缓冲区
+        audio_buffer = io.BytesIO(bytes(audio_bytes))
+        
+        # 加载并播放音频
+        pygame.mixer.music.load(audio_buffer)
+        pygame.mixer.music.play()
+        
+        # 等待播放完成
+        while pygame.mixer.music.get_busy():
+            await asyncio.sleep(0.1)
+    except pygame.error as e:
+        print(f"播放音频时出错: {e}")
+    except Exception as e:
+        print(f"播放音频时出现未知错误: {e}")
+    finally:
+        # 确保总是清理资源
+        try:
+            pygame.mixer.music.unload()
+            pygame.mixer.quit()
+        except:
+            pass
+        finally:
+            _audio_lock.release()
 
 
 async def main(TEXT) -> None:
     """Main function"""
-    communicate = edge_tts.Communicate(TEXT, VOICE, boundary="SentenceBoundary")
-    audio_bytes = bytearray()
-    
-    print("正在生成音频...")
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_bytes.extend(chunk["data"])
-    
-    if audio_bytes:
-        print("正在播放音频...")
-        await play_audio(audio_bytes)
-        print("播放完成!")
-    else:
-        print("未生成音频数据!")
+    try:
+        communicate = edge_tts.Communicate(TEXT, VOICE, boundary="SentenceBoundary")
+        audio_bytes = bytearray()
+        
+        print("正在生成音频...")
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_bytes.extend(chunk["data"])
+        
+        if audio_bytes:
+            print("正在播放音频...")
+            await play_audio(audio_bytes)
+            print("播放完成!")
+        else:
+            print("未生成音频数据!")
+    except Exception as e:
+        print(f"生成或播放音频时出错: {e}")
 
 
 def play_text(text):
     """播放文本"""
-    return main(text)
+    try:
+        asyncio.run(main(text))
+    except Exception as e:
+        print(f"TTS播放文本时出错: {e}")
+
+
 if __name__ == "__main__":
-   for text in TEXT1:
-       asyncio.run(main(text))
+    for text in TEXT1:
+        try:
+            asyncio.run(main(text))
+        except KeyboardInterrupt:
+            print("\n用户中断播放")
+            break
+        except Exception as e:
+            print(f"播放出错: {e}")

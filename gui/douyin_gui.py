@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
     QTextEdit
 )
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QObject
-from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor
+from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QTextDocument
 
 from liveMan import DouyinLiveWebFetcher
 
@@ -30,9 +30,12 @@ def play_tts(text):
         try:
             import asyncio
             from edgetts.play_audio_async import play_text
-            asyncio.run(play_text(text))
+            play_text(text)
         except Exception as e:
             print(f"TTS播放出错: {e}")
+        finally:
+            # 确保线程能正常结束
+            pass
     
     # 在新线程中播放TTS，避免阻塞GUI
     tts_thread = threading.Thread(target=_play, daemon=True)

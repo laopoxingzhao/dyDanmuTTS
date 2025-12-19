@@ -58,7 +58,11 @@ class LiveTTS:
                     if "咨询" in text_to_speak:
                         print(f"[TTS播放] 开始播放: {text_to_speak}")
                         # 调用TTS播放功能
-                        asyncio.run(play_text(text_to_speak))
+                        try:
+                            play_text(text_to_speak)
+                        except Exception as e:
+                            print(f"TTS播放出错: {e}")
+                            continue
                         
             except Exception as e:
                 print(f"TTS播放时发生错误: {e}")
@@ -78,4 +82,9 @@ if __name__ == "__main__":
     
     # 创建并启动TTS播放器
     tts_player = LiveTTS(LIVE_ID)
-    tts_player.start()
+    try:
+        tts_player.start()
+    except KeyboardInterrupt:
+        print("\n程序被用户中断")
+    except Exception as e:
+        print(f"程序运行出错: {e}")
