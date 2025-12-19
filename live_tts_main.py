@@ -59,7 +59,9 @@ class LiveTTS:
                         print(f"[TTS播放] 开始播放: {text_to_speak}")
                         # 调用TTS播放功能
                         try:
-                            play_text(text_to_speak)
+                            loop = asyncio.new_event_loop()
+                            loop.run_until_complete(play_text(text_to_speak))
+                            loop.close()
                         except Exception as e:
                             print(f"TTS播放出错: {e}")
                             continue

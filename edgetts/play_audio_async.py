@@ -7,6 +7,7 @@ import io
 import pygame
 import edge_tts
 import threading
+import sys
 
 TEXT1 = ["君不见，黄河之水天上来，奔流到海不复回。",
 "君不见，高堂明镜悲白发，朝如青丝暮成雪。"
@@ -30,6 +31,23 @@ VOICE = "zh-CN-YunjianNeural"
 _audio_lock = threading.Lock()
 
 
+def _run_async(coro):
+    """安全地运行异步函数"""
+    try:
+        # 尝试获取当前事件循环
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # 如果没有正在运行的事件循环，则创建一个新的
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+    else:
+        # 如果已有事件循环，则创建任务
+        return loop.create_task(coro)
+
+
 async def play_audio(audio_bytes):
     """异步播放音频"""
     # 如果锁已被占用，直接返回
@@ -37,10 +55,12 @@ async def play_audio(audio_bytes):
         print("警告: 上一个音频仍在播放中，跳过本次播放")
         return
     
+    pygame_mixer_initialized = False
     try:
         # 初始化pygame mixer
         pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=512)
         pygame.mixer.init()
+        pygame_mixer_initialized = True
         
         # 将音频数据放入内存缓冲区
         audio_buffer = io.BytesIO(bytes(audio_bytes))
@@ -59,8 +79,9 @@ async def play_audio(audio_bytes):
     finally:
         # 确保总是清理资源
         try:
-            pygame.mixer.music.unload()
-            pygame.mixer.quit()
+            if pygame_mixer_initialized:
+                pygame.mixer.music.unload()
+                pygame.mixer.quit()
         except:
             pass
         finally:
@@ -91,7 +112,7 @@ async def main(TEXT) -> None:
 def play_text(text):
     """播放文本"""
     try:
-        asyncio.run(main(text))
+        _run_async(main(text))
     except Exception as e:
         print(f"TTS播放文本时出错: {e}")
 
@@ -99,7 +120,7 @@ def play_text(text):
 if __name__ == "__main__":
     for text in TEXT1:
         try:
-            asyncio.run(main(text))
+            _run_async(main(text))
         except KeyboardInterrupt:
             print("\n用户中断播放")
             break
