@@ -4,13 +4,15 @@
 
 import asyncio
 import io
+import os
+import tempfile
 import pygame
 import edge_tts
 import threading
 import sys
 
 TEXT1 = ["君不见，黄河之水天上来，奔流到海不复回。",
-"君不见，高堂明镜悲白发，朝如青丝暮成雪。"
+"君不见，高堂明镜悲白发，朝如青丝暮成雪。",
 "人生得意须尽欢，莫使金樽空对月。",
 "天生我材必有用，千金散尽还复来。",
 "烹羊宰牛且为乐，会须一饮三百杯。",
@@ -44,8 +46,12 @@ def _run_async(coro):
         finally:
             loop.close()
     else:
-        # 如果已有事件循环，则创建任务
-        return loop.create_task(coro)
+        # 如果已有事件循环，则在该循环中调度任务（在同一线程内）
+        try:
+            return asyncio.create_task(coro)
+        except RuntimeError:
+            # 若无法在当前线程创建任务（循环在其他线程中），则安全地在线程间调度
+            return asyncio.run_coroutine_threadsafe(coro, loop)
 
 
 async def play_audio(audio_bytes):
@@ -62,16 +68,27 @@ async def play_audio(audio_bytes):
         pygame.mixer.init()
         pygame_mixer_initialized = True
         
-        # 将音频数据放入内存缓冲区
-        audio_buffer = io.BytesIO(bytes(audio_bytes))
-        
-        # 加载并播放音频
-        pygame.mixer.music.load(audio_buffer)
-        pygame.mixer.music.play()
-        
-        # 等待播放完成
-        while pygame.mixer.music.get_busy():
-            await asyncio.sleep(0.1)
+        # 将音频数据写入临时文件（更兼容各种平台与SDL后端）
+        tmp_file = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tf:
+                tf.write(bytes(audio_bytes))
+                tmp_file = tf.name
+
+            # 加载并播放音频文件
+            pygame.mixer.music.load(tmp_file)
+            pygame.mixer.music.play()
+
+            # 等待播放完成
+            while pygame.mixer.music.get_busy():
+                await asyncio.sleep(0.1)
+        finally:
+            # 尝试删除临时文件
+            try:
+                if tmp_file and os.path.exists(tmp_file):
+                    os.remove(tmp_file)
+            except Exception:
+                pass
     except pygame.error as e:
         print(f"播放音频时出错: {e}")
     except Exception as e:
@@ -80,10 +97,18 @@ async def play_audio(audio_bytes):
         # 确保总是清理资源
         try:
             if pygame_mixer_initialized:
-                pygame.mixer.music.unload()
-                pygame.mixer.quit()
-        except:
-            pass
+                try:
+                    pygame.mixer.music.stop()
+                except Exception:
+                    pass
+                try:
+                    pygame.mixer.music.unload()
+                except Exception:
+                    pass
+                try:
+                    pygame.mixer.quit()
+                except Exception:
+                    pass
         finally:
             _audio_lock.release()
 
