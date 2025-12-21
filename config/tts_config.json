@@ -1,21 +1,22 @@
 {
-  "tts_enabled": true,
+  "tts_enabled": false,
+  "chat_tts_enabled": true,
   "enter_tts_enabled": true,
   "enter_tts_templates": [
-    "欢迎{user_name}"
+    "欢迎{user_name}来到直播间"
   ],
   "follow_tts_enabled": true,
   "follow_tts_templates": [
-    "欢迎{user_name}的关注"
+    "感谢{user_name}的关注"
   ],
   "gift_tts_enabled": true,
   "gift_tts_templates": [
-    "感谢{user_name}送出的{gift_name}x{gift_count}.",
-    "{user_name}送出了{gift_name}x{gift_count},感谢支持"
+    "感谢{user_name}送出的{gift_name}x{gift_count}",
+    "{user_name}送出了{gift_name}x{gift_count}，感谢支持"
   ],
   "keyword_tts_enabled": true,
   "keyword_reply_templates": {
-    "1": [
+    "你好": [
       "你好啊{user_name}",
       "欢迎来到直播间{user_name}"
     ],
@@ -26,5 +27,9 @@
     "帮助": [
       "有什么可以帮助你的吗"
     ]
-  }
+  },
+  "volume": 1.0,
+  "muted": false,
+  "voice": "zh-CN-XiaoxiaoNeural",
+  "rate": 0.5
 }

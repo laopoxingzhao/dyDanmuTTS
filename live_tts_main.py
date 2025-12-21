@@ -1,8 +1,11 @@
 import asyncio
 import threading
-from edgetts.play_audio_async import play_text
+import logging
+from tts.play_audio_async import play_text
 
-from liveMan import DouyinLiveWebFetcher
+from core.live_manager import DouyinLiveWebFetcher
+
+logger = logging.getLogger(__name__)
 
 
 class LiveTTS:
@@ -29,7 +32,7 @@ class LiveTTS:
         try:
             listener_thread.join()
         except KeyboardInterrupt:
-            print("程序退出")
+            logger.info("程序退出")
             self.running = False
 
     def _listen_danmaku(self):
@@ -37,7 +40,7 @@ class LiveTTS:
         try:
             self.fetcher.start()
         except Exception as e:
-            print(f"监听弹幕时发生错误: {e}")
+            logger.exception("监听弹幕时发生错误: %s", e)
 
     def _tts_player(self):
         """TTS播放线程"""
@@ -52,22 +55,21 @@ class LiveTTS:
                     user_name = message['payload']['user_name']
                     
                     text_to_speak = f"{user_name}说：{content}"
-                    print(f"[TTS队列] 添加消息: {text_to_speak}")
+                    logger.info("[TTS队列] 添加消息: %s", text_to_speak)
                     
-                    # 检查是否包含"咨询"关键词
-                    if "咨询" in text_to_speak:
-                        print(f"[TTS播放] 开始播放: {text_to_speak}")
-                        # 调用TTS播放功能
-                        try:
-                            loop = asyncio.new_event_loop()
-                            loop.run_until_complete(play_text(text_to_speak))
-                            loop.close()
-                        except Exception as e:
-                            print(f"TTS播放出错: {e}")
-                            continue
+                    # 移除关键词限制，使所有聊天消息都可以触发TTS播放
+                    logger.info("[TTS播放] 开始播放: %s", text_to_speak)
+                    # 调用TTS播放功能
+                    try:
+                        loop = asyncio.new_event_loop()
+                        loop.run_until_complete(play_text(text_to_speak))
+                        loop.close()
+                    except Exception as e:
+                        logger.exception("TTS播放出错: %s", e)
+                        continue
                         
             except Exception as e:
-                print(f"TTS播放时发生错误: {e}")
+                logger.exception("TTS播放时发生错误: %s", e)
                 continue
 
 
@@ -87,6 +89,6 @@ if __name__ == "__main__":
     try:
         tts_player.start()
     except KeyboardInterrupt:
-        print("\n程序被用户中断")
+        logger.info("程序被用户中断")
     except Exception as e:
-        print(f"程序运行出错: {e}")
+        logger.exception("程序运行出错: %s", e)

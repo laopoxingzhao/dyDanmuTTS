@@ -3,6 +3,7 @@ import threading
 import os
 import json
 import random
+import logging
 
 # 添加项目根目录到Python路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -11,12 +12,17 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLineEdit, QPushButton, QTextEdit, QLabel, QGroupBox, QCheckBox, QMessageBox,
     QTabWidget, QListWidget, QListWidgetItem, QDialog, QTextBrowser, QFormLayout,
-    QTextEdit
+    QTextEdit, QComboBox
 )
-from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QObject
+from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QObject, QFileSystemWatcher
 from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QTextDocument
+from PyQt5.QtWidgets import QSlider
 
-from liveMan import DouyinLiveWebFetcher
+from core.live_manager import DouyinLiveWebFetcher
+from tts import play_audio_async as audio_module
+from tts.play_audio_async import list_available_voices
+
+logger = logging.getLogger(__name__)
 
 
 def play_tts(text):
@@ -29,10 +35,10 @@ def play_tts(text):
     def _play():
         try:
             import asyncio
-            from edgetts.play_audio_async import play_text
+            from tts.play_audio_async import play_text
             play_text(text)
         except Exception as e:
-            print(f"TTS播放出错: {e}")
+            logger.exception("TTS播放出错: %s", e)
         finally:
             # 确保线程能正常结束
             pass
@@ -56,41 +62,48 @@ class TTSConfigDialog(QDialog):
     def init_ui(self):
         layout = QVBoxLayout()
         
-        # TTS总开关
+        # 创建TTS配置对话框
         self.tts_enabled = QCheckBox("启用TTS语音播报")
         layout.addWidget(self.tts_enabled)
         
-        # 进场消息TTS
+        # 聊天TTS
+        chat_group = QGroupBox("聊天TTS")
+        chat_layout = QVBoxLayout()
+        chat_layout.addWidget(QLabel("所有聊天消息都将触发TTS播报"))
+        chat_group.setLayout(chat_layout)
+        layout.addWidget(chat_group)
+        
+        # 进场TTS
         enter_group = QGroupBox("用户进场TTS")
         enter_layout = QVBoxLayout()
-        self.enter_tts_enabled = QCheckBox("启用进场TTS播报")
+        self.enter_tts_enabled = QCheckBox("启用用户进场TTS播报")
         enter_layout.addWidget(self.enter_tts_enabled)
         
         enter_templates_label = QLabel("播报模板（每行一个，随机选择）:")
         self.enter_tts_templates = QTextEdit()
         self.enter_tts_templates.setMaximumHeight(60)
-        self.enter_tts_templates.setPlaceholderText("欢迎 {user_name} 来到直播间\n欢迎 {user_name} 加入我们的直播间")
+        self.enter_tts_templates.setPlaceholderText("欢迎 {user_name} 来到直播间\n{user_name} 来了，欢迎欢迎")
         enter_layout.addWidget(enter_templates_label)
         enter_layout.addWidget(self.enter_tts_templates)
         enter_group.setLayout(enter_layout)
         layout.addWidget(enter_group)
         
-        # 关注消息TTS
+        # 关注TTS
         follow_group = QGroupBox("用户关注TTS")
         follow_layout = QVBoxLayout()
-        self.follow_tts_enabled = QCheckBox("启用关注TTS播报")
+        self.follow_tts_enabled = QCheckBox("启用用户关注TTS播报")
         follow_layout.addWidget(self.follow_tts_enabled)
         
         follow_templates_label = QLabel("播报模板（每行一个，随机选择）:")
         self.follow_tts_templates = QTextEdit()
         self.follow_tts_templates.setMaximumHeight(60)
-        self.follow_tts_templates.setPlaceholderText("感谢 {user_name} 的关注\n谢谢 {user_name} 关注我们")
+        self.follow_tts_templates.setPlaceholderText("感谢 {user_name} 的关注\n欢迎新粉丝 {user_name}")
         follow_layout.addWidget(follow_templates_label)
         follow_layout.addWidget(self.follow_tts_templates)
         follow_group.setLayout(follow_layout)
         layout.addWidget(follow_group)
         
-        # 礼物消息TTS
+        # 礼物TTS
         gift_group = QGroupBox("礼物TTS")
         gift_layout = QVBoxLayout()
         self.gift_tts_enabled = QCheckBox("启用礼物TTS播报")
@@ -137,32 +150,62 @@ class TTSConfigDialog(QDialog):
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
         layout.addLayout(btn_layout)
+
+        # 高级设置：人声与语速
+        adv_group = QGroupBox("高级语音设置")
+        adv_layout = QHBoxLayout()
+        self.voice_select = QComboBox()
+        try:
+            voices = list_available_voices()
+            # voices 可能是 list of dict 或 list of strings
+            if voices and isinstance(voices[0], dict):
+                voice_names = [v.get('Name') or v.get('name') or v.get('Voice') for v in voices]
+            else:
+                voice_names = [str(v) for v in voices]
+        except Exception:
+            voice_names = ["zh-CN-YunjianNeural", "zh-CN-XiaoxiaoNeural"]
+        # 去重并添加
+        seen = set()
+        for v in voice_names:
+            if v and v not in seen:
+                self.voice_select.addItem(v)
+                seen.add(v)
+
+        self.rate_select = QSlider(Qt.Horizontal)
+        self.rate_select.setRange(50, 200)
+        self.rate_select.setValue(100)
+        adv_layout.addWidget(QLabel("人声:"))
+        adv_layout.addWidget(self.voice_select)
+        adv_layout.addWidget(QLabel("语速:"))
+        adv_layout.addWidget(self.rate_select)
+        adv_group.setLayout(adv_layout)
+        layout.addWidget(adv_group)
         
         self.setLayout(layout)
         
         
     def load_config(self):
         """加载配置"""
-        config_file = "tts_config.json"
+        config_file = "config/tts_config.json"
         if os.path.exists(config_file):
             try:
                 with open(config_file, 'r', encoding='utf-8') as f:
                     self.config = json.load(f)
                     
-                self.tts_enabled.setChecked(self.config.get('tts_enabled', False))
-                self.enter_tts_enabled.setChecked(self.config.get('enter_tts_enabled', False))
+                self.tts_enabled.setChecked(self.config.get('tts_enabled', True))
+                self.enter_tts_enabled.setChecked(self.config.get('enter_tts_enabled', True))
                 enter_templates = '\n'.join(self.config.get('enter_tts_templates', ['欢迎 {user_name} 来到直播间']))
                 self.enter_tts_templates.setPlainText(enter_templates)
                 
-                self.follow_tts_enabled.setChecked(self.config.get('follow_tts_enabled', False))
+                self.follow_tts_enabled.setChecked(self.config.get('follow_tts_enabled', True))
                 follow_templates = '\n'.join(self.config.get('follow_tts_templates', ['感谢 {user_name} 的关注']))
                 self.follow_tts_templates.setPlainText(follow_templates)
                 
-                self.gift_tts_enabled.setChecked(self.config.get('gift_tts_enabled', False))
+                self.gift_tts_enabled.setChecked(self.config.get('gift_tts_enabled', True))
                 gift_templates = '\n'.join(self.config.get('gift_tts_templates', ['感谢 {user_name} 送出的 {gift_name} x {gift_count}']))
                 self.gift_tts_templates.setPlainText(gift_templates)
                 
-                self.keyword_tts_enabled.setChecked(self.config.get('keyword_tts_enabled', False))
+                self.keyword_tts_enabled.setChecked(self.config.get('keyword_tts_enabled', True))
                 
                 # 加载关键字与回复模板映射
                 keyword_mappings = []
@@ -171,8 +214,26 @@ class TTSConfigDialog(QDialog):
                     mapping_str = f"{keyword}={'|'.join(templates)}"
                     keyword_mappings.append(mapping_str)
                 self.keyword_mapping_text.setPlainText('\n'.join(keyword_mappings))
+                # 加载高级设置
+                voice = self.config.get('voice')
+                if voice and hasattr(self, 'voice_select'):
+                    try:
+                        idx = self.voice_select.findText(voice)
+                        if idx >= 0:
+                            self.voice_select.setCurrentIndex(idx)
+                    except Exception:
+                        pass
+
+                rate = self.config.get('rate')
+                if rate is not None and hasattr(self, 'rate_select'):
+                    try:
+                        v_int = int(float(rate) * 100)
+                        v_int = max(50, min(200, v_int))
+                        self.rate_select.setValue(v_int)
+                    except Exception:
+                        pass
             except Exception as e:
-                print(f"加载TTS配置失败: {e}")
+                logger.exception("加载TTS配置失败: %s", e)
                 
     def save_config(self):
         """保存配置"""
@@ -192,6 +253,7 @@ class TTSConfigDialog(QDialog):
         
         self.config = {
             'tts_enabled': self.tts_enabled.isChecked(),
+            'chat_tts_enabled': True,  # 聊天TTS始终启用
             'enter_tts_enabled': self.enter_tts_enabled.isChecked(),
             'enter_tts_templates': self.enter_tts_templates.toPlainText().split('\n'),
             'follow_tts_enabled': self.follow_tts_enabled.isChecked(),
@@ -201,14 +263,38 @@ class TTSConfigDialog(QDialog):
             'keyword_tts_enabled': self.keyword_tts_enabled.isChecked(),
             'keyword_reply_templates': keyword_reply_templates
         }
+
+        # 把高级设置也写入 config
+        try:
+            if hasattr(self, 'voice_select'):
+                self.config['voice'] = self.voice_select.currentText()
+            if hasattr(self, 'rate_select'):
+                self.config['rate'] = self.rate_select.value() / 100.0
+        except Exception:
+            pass
         
         # 清理空模板
         for key in ['enter_tts_templates', 'follow_tts_templates', 'gift_tts_templates']:
             self.config[key] = [template for template in self.config[key] if template.strip()]
         
         try:
-            with open("tts_config.json", 'w', encoding='utf-8') as f:
-                json.dump(self.config, f, ensure_ascii=False, indent=2)
+            config_path = os.path.join("config", "tts_config.json")
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            # 尝试合并已有配置（保留 volume / muted 等字段）
+            existing = {}
+            if os.path.exists(config_path):
+                try:
+                    with open(config_path, 'r', encoding='utf-8') as ef:
+                        existing = json.load(ef)
+                except Exception:
+                    existing = {}
+
+            # Merge: existing keys preserved unless overwritten here
+            merged = existing.copy()
+            merged.update(self.config)
+
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(merged, f, ensure_ascii=False, indent=2)
             self.accept()
         except Exception as e:
             QMessageBox.warning(self, "错误", f"保存配置失败: {e}")
@@ -276,6 +362,8 @@ class DouyinLiveGUI(QWidget):
         super().__init__()
         self.worker = None
         self.tts_config = {}
+        # 文件变化监视器，自动重载配置
+        self._config_watcher = QFileSystemWatcher(self)
         # 定义消息类型颜色
         self.message_colors = {
             'chat': QColor(0, 0, 0),           # 黑色 - 聊天消息
@@ -291,6 +379,17 @@ class DouyinLiveGUI(QWidget):
         self.init_ui()
         self.setup_timers()
         self.load_tts_config()
+
+        # 监视 config/tts_config.json 的变化并重新加载
+        try:
+            config_path = os.path.join("config", "tts_config.json")
+            # 确保监视路径存在（若不存在则不会添加）
+            if os.path.exists(config_path):
+                self._config_watcher.addPath(config_path)
+            # 当文件被修改时触发 reload
+            self._config_watcher.fileChanged.connect(self._on_config_file_changed)
+        except Exception:
+            logger.exception("初始化配置文件监视器失败")
         
     def init_ui(self):
         """初始化UI"""
@@ -347,6 +446,83 @@ class DouyinLiveGUI(QWidget):
         stats_layout.addWidget(self.stats_label)
         
         stats_group.setLayout(stats_layout)
+
+        # 播放控制区域
+        playback_group = QGroupBox("播放控制")
+        playback_layout = QHBoxLayout()
+
+        self.play_test_btn = QPushButton("播放测试TTS")
+        self.play_test_btn.clicked.connect(self.play_test_tts)
+        playback_layout.addWidget(self.play_test_btn)
+
+        self.pause_btn = QPushButton("暂停")
+        self.pause_btn.clicked.connect(self.pause_playback)
+        playback_layout.addWidget(self.pause_btn)
+
+        self.resume_btn = QPushButton("继续")
+        self.resume_btn.clicked.connect(self.resume_playback)
+        playback_layout.addWidget(self.resume_btn)
+
+        self.stop_play_btn = QPushButton("停止播放")
+        self.stop_play_btn.clicked.connect(self.stop_playback)
+        playback_layout.addWidget(self.stop_play_btn)
+
+        # 音量滑块
+        self.volume_slider = QSlider(Qt.Horizontal)
+        self.volume_slider.setRange(0, 100)
+        self.volume_slider.setValue(100)
+        self.volume_slider.setToolTip("音量")
+        self.volume_slider.valueChanged.connect(self.on_volume_changed)
+        playback_layout.addWidget(self.volume_slider)
+
+        # 音量百分比显示和静音按钮
+        self.volume_label = QLabel("100%")
+        playback_layout.addWidget(self.volume_label)
+
+        self.mute_btn = QPushButton("静音")
+        self.mute_btn.setCheckable(True)
+        self.mute_btn.toggled.connect(self.on_mute_toggled)
+        playback_layout.addWidget(self.mute_btn)
+
+        # 初始化静音状态与历史音量
+        self._is_muted = False
+        self._previous_volume = 1.0
+        # 将初始音量同步到播放器
+        try:
+            audio_module.set_volume(self.volume_slider.value() / 100.0)
+        except Exception:
+            logger.exception("初始化音量失败")
+        # 语速与人声选择控件
+        self.voice_combo = QComboBox()
+        # 添加一些常用 voice 示例（仅示例，可在配置中扩展）
+        voices = ["zh-CN-YunjianNeural", "zh-CN-XiaoxiaoNeural", "en-US-JennyNeural"]
+        self.voice_combo.addItems(voices)
+        # 加载默认 voice
+        try:
+            cfg_path = os.path.join("config", "tts_config.json")
+            if os.path.exists(cfg_path):
+                with open(cfg_path, 'r', encoding='utf-8') as f:
+                    cfg = json.load(f)
+                    default_voice = cfg.get('voice')
+                    if default_voice and default_voice in voices:
+                        self.voice_combo.setCurrentText(default_voice)
+        except Exception:
+            pass
+        playback_layout.addWidget(QLabel("人声:"))
+        playback_layout.addWidget(self.voice_combo)
+
+        self.rate_slider = QSlider(Qt.Horizontal)
+        self.rate_slider.setRange(50, 200)  # 50% - 200%
+        self.rate_slider.setValue(100)
+        self.rate_slider.setToolTip("语速")
+        self.rate_slider.valueChanged.connect(self.on_rate_changed)
+        playback_layout.addWidget(QLabel("语速:"))
+        playback_layout.addWidget(self.rate_slider)
+
+        self.rate_label = QLabel("100%")
+        playback_layout.addWidget(self.rate_label)
+
+        playback_group.setLayout(playback_layout)
         
         # 创建消息类型筛选区域
         filter_group = QGroupBox("消息筛选")
@@ -404,6 +580,7 @@ class DouyinLiveGUI(QWidget):
         # 添加组件到主布局
         main_layout_inner.addWidget(input_group)
         main_layout_inner.addWidget(status_group)
+        main_layout_inner.addWidget(playback_group)
         main_layout_inner.addWidget(stats_group)
         main_layout_inner.addWidget(filter_group)
         main_layout_inner.addWidget(danmaku_group)
@@ -572,13 +749,13 @@ class DouyinLiveGUI(QWidget):
     def check_tts_trigger(self, msg_type, payload):
         """检查是否触发TTS播报"""
         # 检查TTS是否启用
-        if not self.tts_config.get('tts_enabled', False):
+        if not self.tts_config.get('tts_enabled', True):
             return
             
         tts_text = ""
         
         # 进场TTS播报
-        if msg_type == 'member' and self.tts_config.get('enter_tts_enabled', False):
+        if msg_type == 'member' and self.tts_config.get('enter_tts_enabled', True):
             templates = self.tts_config.get('enter_tts_templates', ['欢迎 {user_name} 来到直播间'])
             if templates:
                 template = random.choice(templates)
@@ -586,7 +763,7 @@ class DouyinLiveGUI(QWidget):
                 tts_text = template.format(user_name=user_name)
             
         # 关注TTS播报
-        elif msg_type == 'social' and self.tts_config.get('follow_tts_enabled', False):
+        elif msg_type == 'social' and self.tts_config.get('follow_tts_enabled', True):
             templates = self.tts_config.get('follow_tts_templates', ['感谢 {user_name} 的关注'])
             if templates:
                 template = random.choice(templates)
@@ -594,7 +771,7 @@ class DouyinLiveGUI(QWidget):
                 tts_text = template.format(user_name=user_name)
             
         # 礼物TTS播报
-        elif msg_type == 'gift' and self.tts_config.get('gift_tts_enabled', False):
+        elif msg_type == 'gift' and self.tts_config.get('gift_tts_enabled', True):
             templates = self.tts_config.get('gift_tts_templates', ['感谢 {user_name} 送出的 {gift_name} x {gift_count}'])
             if templates:
                 template = random.choice(templates)
@@ -604,7 +781,7 @@ class DouyinLiveGUI(QWidget):
                 tts_text = template.format(user_name=user_name, gift_name=gift_name, gift_count=gift_count)
             
         # 关键字TTS播报
-        elif msg_type == 'chat' and self.tts_config.get('keyword_tts_enabled', False):
+        elif msg_type == 'chat' and self.tts_config.get('keyword_tts_enabled', True):
             content = payload.get('content', '')
             user_name = payload.get('user_name', '')
             
@@ -624,12 +801,32 @@ class DouyinLiveGUI(QWidget):
             if matched_keyword and matched_templates:
                 template = random.choice(matched_templates)
                 tts_text = template.format(user_name=user_name, content=content)
+            else:
+                # 如果没有匹配的关键字，则使用通用模板播报所有聊天消息
+                general_template = "{user_name}说：{content}"
+                tts_text = general_template.format(user_name=user_name, content=content)
+        
+        # 通用聊天TTS播报（如果没有启用关键字TTS或者没有匹配到关键字）
+        elif msg_type == 'chat' and self.tts_config.get('chat_tts_enabled', True):
+            content = payload.get('content', '')
+            user_name = payload.get('user_name', '')
+            general_template = "{user_name}说：{content}"
+            tts_text = general_template.format(user_name=user_name, content=content)
                     
         # 如果有需要播报的TTS文本，则输出
         if tts_text:
-            print(f"[TTS] {tts_text}")
-            # 这里应该调用实际的TTS播放函数
-            play_tts(tts_text)
+            logger.info("[TTS] %s", tts_text)
+            # 使用当前界面选择的人声和语速进行播放
+            try:
+                voice = self.voice_combo.currentText() if hasattr(self, 'voice_combo') else None
+                rate = (self.rate_slider.value() / 100.0) if hasattr(self, 'rate_slider') else 1.0
+                audio_module.play_text(tts_text, voice=voice, rate=rate)
+            except Exception:
+                # 回退到原始线程调用
+                try:
+                    play_tts(tts_text)
+                except Exception:
+                    logger.exception("触发TTS播放失败")
         
     def update_status(self, status):
         """更新状态显示"""
@@ -665,14 +862,53 @@ class DouyinLiveGUI(QWidget):
             self.load_tts_config()
             
     def load_tts_config(self):
-        """加载TTS配置"""
-        config_file = "tts_config.json"
-        if os.path.exists(config_file):
+        """加载TTS配置并应用音量/静音设置"""
+        config_path = os.path.join("config", "tts_config.json")
+        if os.path.exists(config_path):
             try:
-                with open(config_file, 'r', encoding='utf-8') as f:
+                with open(config_path, 'r', encoding='utf-8') as f:
                     self.tts_config = json.load(f)
+
+                # 应用音量（0.0-1.0）
+                vol = self.tts_config.get('volume')
+                if vol is not None:
+                    try:
+                        v_float = float(vol)
+                        v_int = int(v_float * 100)
+                        v_int = max(0, min(100, v_int))
+                        self.volume_slider.blockSignals(True)
+                        self.volume_slider.setValue(v_int)
+                        self.volume_label.setText(f"{v_int}%")
+                        self.volume_slider.blockSignals(False)
+                        # 立即应用到播放器
+                        try:
+                            audio_module.set_volume(v_float)
+                        except Exception:
+                            logger.exception("应用配置音量到播放器失败")
+                    except Exception:
+                        logger.debug("解析配置中的 volume 字段失败: %s", vol)
+
+                # 应用静音状态
+                muted = bool(self.tts_config.get('muted', False))
+                self._is_muted = muted
+                try:
+                    self.mute_btn.blockSignals(True)
+                    self.mute_btn.setChecked(self._is_muted)
+                    self.mute_btn.setText("已静音" if self._is_muted else "静音")
+                    self.mute_btn.blockSignals(False)
+                    # 立即应用静音到播放器
+                    try:
+                        if self._is_muted:
+                            audio_module.mute_audio()
+                        else:
+                            audio_module.unmute_audio()
+                    except Exception:
+                        logger.exception("应用静音配置到播放器失败")
+                except Exception:
+                    pass
+
             except Exception as e:
-                print(f"加载TTS配置失败: {e}")
+                logger.exception("加载TTS配置失败: %s", e)
                 self.tts_config = {}
         else:
             self.tts_config = {}
@@ -681,7 +917,141 @@ class DouyinLiveGUI(QWidget):
         """关闭事件处理"""
         if self.worker:
             self.worker.stop_listening()
+        try:
+            audio_module.stop_audio_player()
+        except Exception:
+            logger.exception("关闭时停止 AudioPlayer 失败")
+        try:
+            # 移除监视器路径
+            config_path = os.path.join("config", "tts_config.json")
+            if hasattr(self, '_config_watcher') and config_path in self._config_watcher.files():
+                try:
+                    self._config_watcher.removePath(config_path)
+                except Exception:
+                    pass
+        except Exception:
+            pass
         event.accept()
+
+    # --- 播放控制相关 ---
+    def play_test_tts(self):
+        """播放测试TTS文本"""
+        try:
+            voice = self.voice_combo.currentText() if hasattr(self, 'voice_combo') else None
+            rate = (self.rate_slider.value() / 100.0) if hasattr(self, 'rate_slider') else 1.0
+            # ssml_volume 使用 None，让播放端音量控制生效
+            audio_module.play_text("这是播放测试。", voice=voice, rate=rate, ssml_volume=None)
+        except Exception:
+            logger.exception("播放测试TTS失败")
+
+    def pause_playback(self):
+        try:
+            audio_module.pause_audio()
+        except Exception:
+            logger.exception("暂停播放失败")
+
+    def resume_playback(self):
+        try:
+            audio_module.resume_audio()
+        except Exception:
+            logger.exception("恢复播放失败")
+
+    def stop_playback(self):
+        try:
+            audio_module.stop_playback()
+        except Exception:
+            logger.exception("停止播放失败")
+
+    def on_volume_changed(self, value):
+        try:
+            vol = float(value) / 100.0
+            self.volume_label.setText(f"{int(vol*100)}%")
+            # 如果处于静音且滑块调高，则取消静音
+            if self._is_muted and value > 0:
+                self._is_muted = False
+                self.mute_btn.setChecked(False)
+                self.mute_btn.setText("静音")
+            audio_module.set_volume(vol)
+            # 保存到本地配置
+            try:
+                self._save_volume_mute_to_config()
+            except Exception:
+                logger.exception("保存音量配置失败")
+        except Exception:
+            logger.exception("设置音量失败")
+
+    def on_mute_toggled(self, checked: bool):
+        try:
+            if checked:
+                # 静音：保存当前音量并设置为0
+                try:
+                    self._previous_volume = self.volume_slider.value() / 100.0
+                except Exception:
+                    self._previous_volume = 1.0
+                audio_module.set_volume(0.0)
+                self.volume_label.setText("0%")
+                self.mute_btn.setText("已静音")
+                self._is_muted = True
+            else:
+                # 取消静音：恢复历史音量
+                audio_module.set_volume(self._previous_volume)
+                self.volume_slider.setValue(int(self._previous_volume * 100))
+                self.volume_label.setText(f"{int(self._previous_volume*100)}%")
+                self.mute_btn.setText("静音")
+                self._is_muted = False
+            # 保存静音/音量到本地配置
+            try:
+                self._save_volume_mute_to_config()
+            except Exception:
+                logger.exception("保存静音配置失败")
+        except Exception:
+            logger.exception("切换静音失败")
+
+    def on_rate_changed(self, value: int):
+        try:
+            self.rate_label.setText(f"{value}%")
+            # 保存到配置
+            try:
+                self._save_volume_mute_to_config()
+            except Exception:
+                logger.exception("保存语速配置失败")
+        except Exception:
+            logger.exception("设置语速标签失败")
+
+    def _save_volume_mute_to_config(self):
+        """保存当前音量和静音到 config/tts_config.json（合并已有配置）。"""
+        config_path = os.path.join("config", "tts_config.json")
+        try:
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            existing = {}
+            if os.path.exists(config_path):
+                try:
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        existing = json.load(f)
+                except Exception:
+                    existing = {}
+
+            existing['volume'] = self.volume_slider.value() / 100.0
+            existing['muted'] = bool(self._is_muted)
+            # 保存选择的人声和语速
+            try:
+                existing['voice'] = self.voice_combo.currentText() if hasattr(self, 'voice_combo') else existing.get('voice')
+                existing['rate'] = self.rate_slider.value() / 100.0 if hasattr(self, 'rate_slider') else existing.get('rate')
+            except Exception:
+                pass
+
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(existing, f, ensure_ascii=False, indent=2)
+        except Exception:
+            logger.exception("写入音量/静音配置失败")
+
+    def _on_config_file_changed(self, path: str):
+        """当外部修改配置文件时自动重新加载并应用。"""
+        try:
+            # 小延迟以避免文件写入还未完成
+            QTimer.singleShot(200, self.load_tts_config)
+        except Exception:
+            logger.exception("处理配置文件变化失败: %s", path)
 
 
 def main():

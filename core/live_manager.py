@@ -18,12 +18,16 @@ from unittest.mock import patch
 import requests
 import websocket
 from py_mini_racer import MiniRacer
+import logging
 
-from ac_signature import get__ac_signature
+from core.signature.ac_signature import get__ac_signature
 from protobuf.douyin import *
 
 from urllib3.util.url import parse_url
-from message_handler import MessageHandler
+from core.message_handler import MessageHandler
+
+
+logger = logging.getLogger(__name__)
 
 
 def execute_js(js_file: str):
@@ -51,7 +55,7 @@ def patched_popen_encoding(encoding='utf-8'):
         yield
 
 
-def generateSignature(wss, script_file='sign.js'):
+def generateSignature(wss, script_file='core/signature/js/sign.js'):
     """
     出现gbk编码问题则修改 python模块subprocess.py的源码中Popen类的__init__函数参数encoding值为 "utf-8"
     """
@@ -77,7 +81,7 @@ def generateSignature(wss, script_file='sign.js'):
         signature = ctx.call("get_sign", md5_param)
         return signature
     except Exception as e:
-        print(e)
+        logger.exception("generateSignature 调用 get_sign 失败")
     
     # 以下代码对应js脚本为sign_v0.js
     # context = execjs.compile(script)
@@ -102,11 +106,12 @@ def generateMsToken(length=182):
 
 class DouyinLiveWebFetcher:
     
-    def __init__(self, live_id, abogus_file='a_bogus.js'):
+    def __init__(self, live_id, abogus_file='core/signature/js/a_bogus.js'):  # 可根据实际需求调整路径
         """
         直播间弹幕抓取对象
         :param live_id: 直播间的直播id，打开直播间web首页的链接如：https://live.douyin.com/261378947940，
                         其中的261378947940即是live_id
+        :param abogus_file: a_bogus生成所用的JS文件路径
         """
         self.abogus_file = abogus_file
         self.__ttwid = None
@@ -121,13 +126,39 @@ class DouyinLiveWebFetcher:
         }
         self.message_handler = MessageHandler()
         self.on_status_update = None  # 状态更新回调函数
+        # 控制心跳线程和安全关闭
+        self._heartbeat_stop_event = threading.Event()
+        self._heartbeat_thread = None
     
     def start(self):
         self._connectWebSocket()
     
     def stop(self):
-        self.ws.close()
-        self.message_handler.stop()
+        """
+        安全停止：关闭心跳线程、WebSocket 和消息处理器
+        """
+        try:
+            # 停止心跳线程
+            self._heartbeat_stop_event.set()
+
+            # 关闭 websocket（如果存在）
+            if hasattr(self, 'ws') and self.ws is not None:
+                try:
+                    self.ws.close()
+                except Exception:
+                    logger.exception("关闭 WebSocket 时发生错误")
+
+            # 停止消息处理器
+            try:
+                self.message_handler.stop()
+            except Exception:
+                logger.exception("停止 message_handler 时发生错误")
+
+            # 等待心跳线程退出
+            if self._heartbeat_thread is not None and self._heartbeat_thread.is_alive():
+                self._heartbeat_thread.join(timeout=2)
+        except Exception:
+            logger.exception("停止 DouyinLiveWebFetcher 时发生未处理的错误")
     
     def get_message(self, timeout=None):
         """
@@ -166,7 +197,7 @@ class DouyinLiveWebFetcher:
             response = self.session.get(self.live_url, headers=headers)
             response.raise_for_status()
         except Exception as err:
-            print("【X】Request the live url error: ", err)
+            logger.error("Request the live url error: %s", err)
         else:
             self.__ttwid = response.cookies.get('ttwid')
             return self.__ttwid
@@ -188,11 +219,11 @@ class DouyinLiveWebFetcher:
             response = self.session.get(url, headers=headers)
             response.raise_for_status()
         except Exception as err:
-            print("【X】Request the live room url error: ", err)
+            logger.error("Request the live room url error: %s", err)
         else:
             match = re.search(r'roomId\\":\\"(\d+)\\"', response.text)
             if match is None or len(match.groups()) < 1:
-                print("【X】No match found for roomId")
+                logger.error("No match found for roomId in response")
             
             self.__room_id = match.group(1)
             
@@ -248,13 +279,18 @@ class DouyinLiveWebFetcher:
             'Cookie': f'ttwid={self.ttwid};__ac_nonce={nonce}; __ac_signature={signature}',
         })
         resp = self.session.get(url, headers=headers)
-        data = resp.json().get('data')
+        try:
+            data = resp.json().get('data')
+        except requests.exceptions.JSONDecodeError:
+            logger.error("无法解析房间状态响应为JSON格式，响应内容: %s", resp.text[:200])
+            return
+            
         if data:
             room_status = data.get('room_status')
             user = data.get('user')
             user_id = user.get('id_str')
             nickname = user.get('nickname')
-            print(f"【{nickname}】[{user_id}]直播间：{['正在直播', '已结束'][bool(room_status)]}.")
+            logger.info("直播间状态 - %s [%s]: %s", nickname, user_id, ['正在直播', '已结束'][bool(room_status)])
     
     def _connectWebSocket(self):
         """
@@ -299,25 +335,30 @@ class DouyinLiveWebFetcher:
         """
         发送心跳包
         """
-        while True:
+        while not self._heartbeat_stop_event.is_set():
             try:
                 heartbeat = PushFrame(payload_type='hb').SerializeToString()
-                self.ws.send(heartbeat, websocket.ABNF.OPCODE_PING)
-                print("【√】发送心跳包")
-            except Exception as e:
-                print("【X】心跳包检测错误: ", e)
+                if hasattr(self, 'ws') and self.ws is not None:
+                    self.ws.send(heartbeat, websocket.ABNF.OPCODE_PING)
+                    logger.debug("发送心跳包")
+            except Exception:
+                logger.exception("心跳包发送错误")
+                # 发生错误时尝试退出心跳循环
+                self._heartbeat_stop_event.set()
                 break
-            else:
-                time.sleep(5)
+            time.sleep(5)
     
     def _wsOnOpen(self, ws):
         """
         连接建立成功
         """
-        print("【√】WebSocket连接成功.")
+        logger.info("WebSocket 连接成功.")
         if self.on_status_update:
             self.on_status_update("WebSocket连接成功")
-        threading.Thread(target=self._sendHeartbeat).start()
+        # 清理停止标志并以 daemon 线程启动心跳
+        self._heartbeat_stop_event.clear()
+        self._heartbeat_thread = threading.Thread(target=self._sendHeartbeat, daemon=True)
+        self._heartbeat_thread.start()
     
     def _wsOnMessage(self, ws, message):
         """
@@ -361,13 +402,16 @@ class DouyinLiveWebFetcher:
                 pass
     
     def _wsOnError(self, ws, error):
-        print("WebSocket error: ", error)
+        logger.error("WebSocket 错误: %s", error)
         if self.on_status_update:
             self.on_status_update(f"WebSocket错误: {error}")
     
     def _wsOnClose(self, ws, *args):
-        self.get_room_status()
-        print("WebSocket connection closed.")
+        try:
+            self.get_room_status()
+        except Exception:
+            logger.exception("获取房间状态时出错")
+        logger.info("WebSocket 连接已关闭")
         if self.on_status_update:
             self.on_status_update("WebSocket连接已关闭")
     
@@ -385,7 +429,7 @@ class DouyinLiveWebFetcher:
         }
         
         self.message_handler.add_message('chat', chat_msg)
-        print(f"【聊天msg】[{user_id}]{user_name}: {content}")
+        logger.info("聊天消息 [%s] %s: %s", user_id, user_name, content)
 
     
     def _parseGiftMsg(self, payload):
@@ -490,7 +534,7 @@ class DouyinLiveWebFetcher:
         }
         
         self.message_handler.add_message('emoji_chat', emoji_msg)
-        print(f"【聊天表情包id】 {emoji_id},user：{user},common:{common},default_content:{default_content}")
+        logger.debug("聊天表情包 id=%s user=%s common=%s default=%s", emoji_id, user, common, default_content)
     
     def _parseRoomMsg(self, payload):
         message = RoomMessage().parse(payload)
@@ -502,7 +546,7 @@ class DouyinLiveWebFetcher:
         }
         
         self.message_handler.add_message('room', room_msg)
-        print(f"【直播间msg】直播间id:{room_id}")
+        logger.debug("直播间消息 room_id=%s", room_id)
     
     def _parseRoomStatsMsg(self, payload):
         message = RoomStatsMessage().parse(payload)
@@ -513,7 +557,7 @@ class DouyinLiveWebFetcher:
         }
         
         self.message_handler.add_message('room_display_stats', room_stats_msg)
-        print(f"【直播间统计msg】{display_long}")
+        logger.debug("直播间统计: %s", display_long)
     
     def _parseRankMsg(self, payload):
         message = RoomRankMessage().parse(payload)
@@ -537,7 +581,7 @@ class DouyinLiveWebFetcher:
         self.message_handler.add_message('control', control_msg)
         
         if message.status == 3:
-            print("直播间已结束")
+            logger.info("直播间已结束 (status=3)")
             self.stop()
     
     def _parseRoomStreamAdaptationMsg(self, payload):
@@ -549,4 +593,4 @@ class DouyinLiveWebFetcher:
         }
         
         self.message_handler.add_message('stream_adaptation', adaptation_msg)
-        print(f'直播间adaptation: {adaptationType}')
+        logger.info('直播间 adaptation: %s', adaptationType)

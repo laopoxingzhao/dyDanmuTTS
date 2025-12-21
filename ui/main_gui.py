@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
     QLabel, QGroupBox
 )
 from PyQt5.QtCore import Qt
-from gui.douyin_gui import DouyinLiveGUI
+from ui.douyin_gui import DouyinLiveGUI
 
 
 class MainGUI(QWidget):
