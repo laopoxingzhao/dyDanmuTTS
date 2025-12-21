@@ -1,5 +1,5 @@
 {
-  "tts_enabled": false,
+  "tts_enabled": true,
   "chat_tts_enabled": true,
   "enter_tts_enabled": true,
   "enter_tts_templates": [
@@ -30,6 +30,6 @@
   },
   "volume": 1.0,
   "muted": false,
-  "voice": "zh-CN-XiaoxiaoNeural",
+  "voice": "Microsoft Server Speech Text to Speech Voice (af-ZA, AdriNeural)",
   "rate": 0.5
 }
