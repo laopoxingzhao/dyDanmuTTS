@@ -59,7 +59,7 @@ def run_gui_mode():
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        show_usage()
+      pass
     elif sys.argv[1] == 'gui':
         run_gui_mode()
     else:
