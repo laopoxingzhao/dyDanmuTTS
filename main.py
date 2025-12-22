@@ -38,21 +38,21 @@ def show_usage():
     print(usage)
 
 
-# def run_command_line_mode(live_id):
-#     """运行命令行模式"""
-#     try:
-#         # 尝试导入DouyinLiveWebFetcher类
-#         try:
-#             from liveMan import DouyinLiveWebFetcher
-#             print(f"正在连接直播间: {live_id}")
-#             room = DouyinLiveWebFetcher(live_id)
-#             room.start()
-#         except ImportError:
-#             print("错误：找不到liveMan模块，请确保项目文件完整")
-#     except KeyboardInterrupt:
-#         print("\n程序已退出")
-#     except Exception as e:
-#         print(f"发生错误: {e}")
+def run_command_line_mode(live_id):
+    """运行命令行模式"""
+    try:
+        # 尝试导入DouyinLiveWebFetcher类
+        try:
+            from liveMan import DouyinLiveWebFetcher
+            print(f"正在连接直播间: {live_id}")
+            room = DouyinLiveWebFetcher(live_id)
+            room.start()
+        except ImportError:
+            print("错误：找不到liveMan模块，请确保项目文件完整")
+    except KeyboardInterrupt:
+        print("\n程序已退出")
+    except Exception as e:
+        print(f"发生错误: {e}")
 
 
 def run_gui_mode():
@@ -63,17 +63,7 @@ def run_gui_mode():
         from ui.danmu_display_ui import DanmuDisplayWindow
         import sys
         from threading import Thread
-        
-        # 尝试导入DouyinLiveWebFetcher类
-        try:
-            from liveMan import DouyinLiveWebFetcher
-            has_fetcher = True
-        except ImportError:
-            print("警告：找不到liveMan模块，将无法获取实际弹幕数据")
-            DouyinLiveWebFetcher = None
-            has_fetcher = False
-
-            
+              
         app = QApplication(sys.argv)
         room_window = RoomInputWindow()
         
@@ -84,33 +74,7 @@ def run_gui_mode():
             
             # 创建并显示弹幕窗口
             danmu_window = DanmuDisplayWindow(room_id)
-            
-            # 如果有DouyinLiveWebFetcher类，则启动弹幕抓取
-            if has_fetcher:
-                # 创建弹幕抓取器
-                fetcher = DouyinLiveWebFetcher(room_id)
-                
-                # 定义处理消息的函数
-                def handle_message(msg):
-                    # 将消息发送到UI线程
-                    danmu_window.danmu_received.emit(msg)
-                    
-                def handle_stats(stats):
-                    # 将统计数据发送到UI线程
-                    danmu_window.stats_updated.emit(stats)
-                
-                # 注册消息处理器
-                fetcher.on_message(handle_message)
-                fetcher.on_stats(handle_stats)
-                
-                # 在独立线程中启动弹幕抓取
-                def start_fetching():
-                    fetcher.start()
-                
-                fetch_thread = Thread(target=start_fetching)
-                fetch_thread.daemon = True
-                fetch_thread.start()
-            
+         
             # 显示弹幕窗口
             danmu_window.show()
         
