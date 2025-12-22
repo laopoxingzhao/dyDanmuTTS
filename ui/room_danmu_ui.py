@@ -46,6 +46,8 @@ class RoomDanmuWindow(QMainWindow):
                 border-radius: 5px;
                 padding: 5px;
                 font-size: 14px;
+                selection-background-color: #d0e1ff;  /* 选择时的背景色 */
+                selection-color: black;  /* 选择时的文字颜色 */
             }
             QListWidget::item {
                 padding: 5px;
@@ -53,6 +55,10 @@ class RoomDanmuWindow(QMainWindow):
             }
             QListWidget::item:hover {
                 background-color: #f5f5f5;
+            }
+            QListWidget::item:selected {
+                background-color: #d0e1ff;
+                color: black;
             }
             QPushButton {
                 background-color: #4CAF50;
@@ -128,6 +134,7 @@ class RoomDanmuWindow(QMainWindow):
         danmu_list_layout.addWidget(danmu_label)
         
         self.danmu_list = QListWidget()
+        self.danmu_list.setSelectionMode(QListWidget.SingleSelection)  # 设置为单选模式
         self.danmu_list.itemClicked.connect(self.on_item_clicked)
         danmu_list_layout.addWidget(self.danmu_list)
         
@@ -177,8 +184,8 @@ class RoomDanmuWindow(QMainWindow):
         # 设置清理弹幕的定时器，每5分钟清理一半旧数据
         self.clean_danmu_timer = QTimer(self)
         self.clean_danmu_timer.timeout.connect(self.clean_old_danmu)
-        self.clean_danmu_timer.start(5 * 60 * 1000)  # 每5分钟触发一次 (5 * 60 * 1000 毫秒)
-        
+        self.clean_danmu_timer.start(5 * 1000 * 60)  # 每5分钟触发一次 (5 * 60 * 1000 毫秒)
+
     def add_random_danmu(self):
         """添加一条随机弹幕"""
         # 生成随机数据
@@ -201,8 +208,11 @@ class RoomDanmuWindow(QMainWindow):
         display_text = f"[{danmu_data['time']}] {danmu_data['user']}: {danmu_data['message']}"
         self.danmu_list.addItem(display_text)
         
-        # 自动滚动到底部
-        self.danmu_list.scrollToBottom()
+        #判断当前是否在最底部
+        if self.danmu_list.verticalScrollBar().value() == self.danmu_list.verticalScrollBar().maximum():
+            
+            # 自动滚动到底部
+            self.danmu_list.scrollToBottom()
         
         # 为最新的弹幕项设置样式
         last_item = self.danmu_list.item(self.danmu_list.count() - 1)
@@ -210,21 +220,16 @@ class RoomDanmuWindow(QMainWindow):
         
     def clean_old_danmu(self):
         """清理一半的旧数据"""
-        total_count = self.danmu_list.count()
-        if total_count > 0:
-            # 计算需要删除的数量（一半）
-            remove_count = total_count // 2
-            
-            # 从顶部开始删除旧数据
-            for i in range(remove_count):
-                # 每次都删除第一项（索引0）
-                self.danmu_list.takeItem(0)
-                
+        num_items = self.danmu_list.count()
+        for i in range(num_items // 2):
+            item = self.danmu_list.takeItem(0)
+            del item
+        self.danmu_counter = self.danmu_list.count()
     def on_item_clicked(self, item):
         """当列表项被点击时显示详细信息"""
-        # 在实际应用中，这里会显示真实的详细信息
         row = self.danmu_list.row(item)
-      
+        # 取消注释以下代码可以在控制台打印点击的项目信息
+        # print(f"点击了第{row}行项目: {item.text()}")
         
     def clear_danmu(self):
         """清空弹幕列表"""
@@ -238,6 +243,11 @@ class RoomDanmuWindow(QMainWindow):
             self.add_danmu_timer.stop()
         if hasattr(self, 'clean_danmu_timer'):
             self.clean_danmu_timer.stop()
+            
+        # 清理列表中的所有项目
+        self.danmu_list.clear()
+        
+        # 发射窗口关闭信号
         self.window_closed.emit()
         event.accept()
 

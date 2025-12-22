@@ -5,13 +5,15 @@
 抖音直播弹幕抓取工具主入口
 
 本项目支持多种使用方式:
-1. 命令行直接运行: python main.py <room_id>
+1. 呑令行直接运行: python main.py <room_id>
 2. GUI界面运行: python main.py gui
 3. TTS模式运行: python live_tts_main.py
 """
 
 import sys
 import os
+
+from ui.room_danmu_ui import RoomDanmuWindow
 
 # 添加项目根目录到Python路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -39,12 +41,12 @@ def run_gui_mode():
             # 隐藏房间选择窗口
             room_window.hide()
             
-            # 创建并显示弹幕窗口
-            # danmu_window = DanmuDisplayWindow(room_id)
-         
-            # 显示弹幕窗口
-            # danmu_window.show()
-        
+            # 保存对room_danmu_window的引用，防止被垃圾回收导致窗口闪退
+            room_window.room_danmu_window = RoomDanmuWindow(room_id.strip())
+            room_window.room_danmu_window.show()
+            # 连接窗口关闭信号，确保窗口关闭后重新显示输入窗口
+            room_window.room_danmu_window.window_closed.connect(room_window.show)
+            
         # 连接房间选择信号
         room_window.room_selected.connect(handle_room_selected)
         

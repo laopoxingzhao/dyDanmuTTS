@@ -15,7 +15,7 @@ async def tts_generation(text, voice="zh-CN-XiaoxiaoNeural", rate="+0%", volume=
     communicate = edge_tts.Communicate(text, voice, rate=rate, volume=volume)
     
     # 生成音频文件
-    await communicate.save("output.mp3")
+    await communicate.save("output/output.mp3")
 
 async def list_voices():
     """列出所有可用的中文语音"""

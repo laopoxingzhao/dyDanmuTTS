@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QTextEdit, QMessageBox)
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QCloseEvent
-
+from ui.room_danmu_ui import RoomDanmuWindow
 
 class RoomInputWindow(QMainWindow):
     # 定义信号，用于传递房间ID
@@ -107,7 +107,9 @@ class RoomInputWindow(QMainWindow):
             # 发送房间ID信号
             self.room_selected.emit(room_id)
             # 关闭当前窗口
-            # self.close()
+            self.close()
+           
+
 
     def closeEvent(self, event: QCloseEvent):
         """窗口关闭事件"""
