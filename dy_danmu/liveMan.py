@@ -464,7 +464,7 @@ class DouyinLiveWebFetcher:
         # print(f"【直播间排行榜msg】{ranks_list}")
         g_logger.debug(f"【直播间排行榜msg】{ranks_list}")
         # uiq.put("rank",f"{ranks_list}")
-        uiq.put("WebcastRankMessage",f"{ranks_list}")
+        uiq.put("WebcastRoomRankMessage",f"{ranks_list}")
     
     def _parseControlMsg(self, payload):
         '''直播间状态消息'''
@@ -481,4 +481,3 @@ class DouyinLiveWebFetcher:
         # print(f'直播间adaptation: {adaptationType}')
         g_logger.debug(f'直播间adaptation: {adaptationType}')
         # uiq.put("room_stream_adaptation",f'直播间adaptation: {adaptationType}')
-        uiq.put("WebcastRoomStreamAdaptationMessage",f'直播间adaptation: {adaptationType}')
