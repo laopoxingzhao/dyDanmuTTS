@@ -1,0 +1,44 @@
+{
+    "tts_settings": {
+        "tts_enabled": true,
+        "enter_tts_enabled": false,
+        "enter_tts_templates": [
+            "欢迎{user_name}进入直播间"
+        ],
+        "follow_tts_enabled": false,
+        "follow_tts_templates": [
+            "感谢{user_name}的关注"
+        ],
+        "gift_tts_enabled": false,
+        "gift_tts_templates": [
+            "感谢{user_name}送出的{gift_name}",
+            "{user_name}送出了礼物，感谢支持"
+        ],
+        "keyword_tts_enabled": false,
+        "keyword_reply_templates": {
+            "1": [
+                "你好啊{user_name}",
+                "欢迎来到直播间{user_name}"
+            ],
+            "问题": [
+                "这是一个好问题",
+                "让我想想怎么回答{user_name}"
+            ],
+            "帮助": [
+                "有什么可以帮助你的吗"
+            ]
+        },
+        "volume": 70,
+        "voice": 0,
+        "speed": 10
+    },
+    "danmu_settings": {
+        "WebcastChatMessage": true,
+        "WebcastGiftMessage": true,
+        "WebcastLikeMessage": true,
+        "WebcastMemberMessage": true,
+        "WebcastSocialMessage": true,
+        "WebcastFansclubMessage": true,
+        "WebcastEmojiChatMessage": true
+    }
+}

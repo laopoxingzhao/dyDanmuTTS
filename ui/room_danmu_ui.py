@@ -2,11 +2,12 @@ import sys
 import random
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QListWidget, QPushButton, 
-                             QSplitter, QTextEdit, QCheckBox,QTabWidget,QGroupBox)
+                             QSplitter, QTextEdit,QComboBox, QCheckBox, QTabWidget, QGroupBox, QSlider,QLineEdit)
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont, QColor
 import datetime
 from tool.myqueue import uiq
+from config.config_manager import ConfigManager
 checkbox_labels = {
                     'WebcastChatMessage':  '聊天消息',
                     'WebcastGiftMessage':   '礼物消息',
@@ -29,6 +30,7 @@ class RoomDanmuWindow(QMainWindow):
     def __init__(self, room_id):
         super().__init__()
         self.room_id = room_id
+        self.config_manager = ConfigManager()  # 初始化配置管理器
         self.danmu_counter = 0  # 弹幕计数器
         self.init_ui()
         self.setup_timers()  # 设置定时器
@@ -142,7 +144,11 @@ class RoomDanmuWindow(QMainWindow):
      
         for key, label in checkbox_labels.items():
             checkbox = QCheckBox(label)
-            checkbox.setChecked(True)  # 默认选中
+            # 从配置中加载弹幕显示设置
+            checked = self.config_manager.get_config("danmu_settings", key, True)
+            checkbox.setChecked(checked)
+            # 连接状态改变事件，保存设置
+            checkbox.stateChanged.connect(lambda state, k=key: self.on_checkbox_state_changed(k, state))
             self.checkboxes[key] = checkbox
             checkbox_layout.addWidget(checkbox)
         checkbox_layout.addStretch()  # 添加弹性空间
@@ -242,7 +248,10 @@ class RoomDanmuWindow(QMainWindow):
 
         # TTS总开关
         self.tts_enabled = QCheckBox("启用TTS语音播报")
-        self.tts_enabled.setChecked(False)  # 默认关闭
+        # 从配置中加载TTS总开关状态
+        tts_enabled = self.config_manager.get_config("tts_settings", "tts_enabled", False)
+        self.tts_enabled.setChecked(tts_enabled)
+        self.tts_enabled.stateChanged.connect(lambda state: self.config_manager.set_config("tts_settings", "tts_enabled", state == Qt.Checked))
         self.tts_enabled.setStyleSheet("""
             QCheckBox {
                 font-size: 12px;
@@ -266,34 +275,112 @@ class RoomDanmuWindow(QMainWindow):
         """)
         layout.addWidget(self.tts_enabled)
 
-        # 消息类型配置组
-        msg_config_group = QGroupBox("消息类型语音播报配置")
-        msg_config_layout = QVBoxLayout()
-        msg_config_group.setLayout(msg_config_layout)
-        layout.addWidget(msg_config_group)
+        # 用户进入消息TTS配置
+        enter_group = QGroupBox("用户进入消息TTS")
+        enter_layout = QVBoxLayout()
+        enter_group.setLayout(enter_layout)
+        layout.addWidget(enter_group)
 
-        # 各种消息类型的TTS开关
-        self.chat_tts_enabled = QCheckBox("聊天消息TTS播报")
-        self.gift_tts_enabled = QCheckBox("礼物消息TTS播报")
-        self.like_tts_enabled = QCheckBox("点赞消息TTS播报")
-        self.member_tts_enabled = QCheckBox("用户进场TTS播报")
-        self.social_tts_enabled = QCheckBox("关注消息TTS播报")
-        self.fansclub_tts_enabled = QCheckBox("粉丝团消息TTS播报")
-        self.emojichat_tts_enabled = QCheckBox("聊天表情包消息TTS播报")
+        self.enter_tts_enabled = QCheckBox("启用用户进入消息TTS")
+        enter_enabled = self.config_manager.get_config("tts_settings", "enter_tts_enabled", False)
+        self.enter_tts_enabled.setChecked(enter_enabled)
+        self.enter_tts_enabled.stateChanged.connect(lambda state: self.config_manager.set_config("tts_settings", "enter_tts_enabled", state == Qt.Checked))
+        enter_layout.addWidget(self.enter_tts_enabled)
 
-        # 设置样式
-        for checkbox in [self.chat_tts_enabled, self.gift_tts_enabled, self.like_tts_enabled,
-                         self.member_tts_enabled, self.social_tts_enabled, self.fansclub_tts_enabled,
-                         self.emojichat_tts_enabled]:
-            checkbox.setStyleSheet("""
-                QCheckBox {
-                    font-size: 11px;
-                    padding: 6px;
-                    spacing: 8px;
-                }
-            """)
-            checkbox.setChecked(False)  # 默认关闭
-            msg_config_layout.addWidget(checkbox)
+        enter_template_label = QLabel("进入消息模板:")
+        enter_layout.addWidget(enter_template_label)
+
+        self.enter_template_text = QTextEdit()
+        enter_templates = self.config_manager.get_config("tts_settings", "enter_tts_templates", ["欢迎{user_name}进入直播间"])
+        self.enter_template_text.setPlainText("\n".join(enter_templates))
+        self.enter_template_text.textChanged.connect(self.save_enter_templates)
+        enter_layout.addWidget(self.enter_template_text)
+
+        # 关注消息TTS配置
+        follow_group = QGroupBox("关注消息TTS")
+        follow_layout = QVBoxLayout()
+        follow_group.setLayout(follow_layout)
+        layout.addWidget(follow_group)
+
+        self.follow_tts_enabled = QCheckBox("启用关注消息TTS")
+        follow_enabled = self.config_manager.get_config("tts_settings", "follow_tts_enabled", False)
+        self.follow_tts_enabled.setChecked(follow_enabled)
+        self.follow_tts_enabled.stateChanged.connect(lambda state: self.config_manager.set_config("tts_settings", "follow_tts_enabled", state == Qt.Checked))
+        follow_layout.addWidget(self.follow_tts_enabled)
+
+        follow_template_label = QLabel("关注消息模板:")
+        follow_layout.addWidget(follow_template_label)
+
+        self.follow_template_text = QTextEdit()
+        follow_templates = self.config_manager.get_config("tts_settings", "follow_tts_templates", ["感谢{user_name}的关注"])
+        self.follow_template_text.setPlainText("\n".join(follow_templates))
+        self.follow_template_text.textChanged.connect(self.save_follow_templates)
+        follow_layout.addWidget(self.follow_template_text)
+
+        # 礼物消息TTS配置
+        gift_group = QGroupBox("礼物消息TTS")
+        gift_layout = QVBoxLayout()
+        gift_group.setLayout(gift_layout)
+        layout.addWidget(gift_group)
+
+        self.gift_tts_enabled = QCheckBox("启用礼物消息TTS")
+        gift_enabled = self.config_manager.get_config("tts_settings", "gift_tts_enabled", False)
+        self.gift_tts_enabled.setChecked(gift_enabled)
+        self.gift_tts_enabled.stateChanged.connect(lambda state: self.config_manager.set_config("tts_settings", "gift_tts_enabled", state == Qt.Checked))
+        gift_layout.addWidget(self.gift_tts_enabled)
+
+        gift_template_label = QLabel("礼物消息模板:")
+        gift_layout.addWidget(gift_template_label)
+
+        self.gift_template_text = QTextEdit()
+        gift_templates = self.config_manager.get_config("tts_settings", "gift_tts_templates", [
+            "感谢{user_name}送出的{gift_name}",
+            "{user_name}送出了礼物，感谢支持"
+        ])
+        self.gift_template_text.setPlainText("\n".join(gift_templates))
+        self.gift_template_text.textChanged.connect(self.save_gift_templates)
+        gift_layout.addWidget(self.gift_template_text)
+
+        # 关键字回复TTS配置
+        keyword_group = QGroupBox("关键字回复TTS")
+        keyword_layout = QVBoxLayout()
+        keyword_group.setLayout(keyword_layout)
+        layout.addWidget(keyword_group)
+
+        self.keyword_tts_enabled = QCheckBox("启用关键字回复TTS")
+        keyword_enabled = self.config_manager.get_config("tts_settings", "keyword_tts_enabled", False)
+        self.keyword_tts_enabled.setChecked(keyword_enabled)
+        self.keyword_tts_enabled.stateChanged.connect(lambda state: self.config_manager.set_config("tts_settings", "keyword_tts_enabled", state == Qt.Checked))
+        keyword_layout.addWidget(self.keyword_tts_enabled)
+
+        keyword_template_label = QLabel("关键字回复模板 (格式: 关键字=模板1|模板2):")
+        keyword_layout.addWidget(keyword_template_label)
+
+        self.keyword_template_text = QTextEdit()
+        keyword_templates = self.config_manager.get_config("tts_settings", "keyword_reply_templates", {
+            "1": [
+                "你好啊{user_name}",
+                "欢迎来到直播间{user_name}"
+            ],
+            "问题": [
+                "这是一个好问题",
+                "让我想想怎么回答{user_name}"
+            ],
+            "帮助": [
+                "有什么可以帮助你的吗"
+            ]
+        })
+        
+        # 格式化关键字模板为文本格式
+        formatted_keywords = []
+        for keyword, templates in keyword_templates.items():
+            if isinstance(templates, list):
+                formatted_keywords.append(f"{keyword}=" + "|".join(templates))
+            else:
+                formatted_keywords.append(f"{keyword}={templates}")
+        self.keyword_template_text.setPlainText("\n".join(formatted_keywords))
+        self.keyword_template_text.textChanged.connect(self.save_keyword_templates)
+        keyword_layout.addWidget(self.keyword_template_text)
 
         # 音量控制
         volume_group = QGroupBox("音量设置")
@@ -302,13 +389,14 @@ class RoomDanmuWindow(QMainWindow):
         layout.addWidget(volume_group)
 
         # 使用滑块控制音量
-        from PyQt5.QtWidgets import QSlider, QHBoxLayout
-        volume_label = QLabel("音量: 70%")
+        volume_label = QLabel(f"音量: {self.config_manager.get_config('tts_settings', 'volume', 70)}%")
         volume_slider = QSlider(Qt.Horizontal)
         volume_slider.setMinimum(0)
         volume_slider.setMaximum(100)
-        volume_slider.setValue(70)
-        volume_slider.valueChanged.connect(lambda value: volume_label.setText(f"音量: {value}%"))
+        # 从配置中加载音量值
+        volume_value = self.config_manager.get_config("tts_settings", "volume", 70)
+        volume_slider.setValue(volume_value)
+        volume_slider.valueChanged.connect(lambda value: [volume_label.setText(f"音量: {value}%"), self.config_manager.set_config("tts_settings", "volume", value)])
 
         volume_control_layout = QHBoxLayout()
         volume_control_layout.addWidget(volume_label)
@@ -321,11 +409,13 @@ class RoomDanmuWindow(QMainWindow):
         voice_group.setLayout(voice_layout)
         layout.addWidget(voice_group)
 
-        from PyQt5.QtWidgets import QComboBox
         voice_label = QLabel("选择语音:")
         self.voice_combo = QComboBox()
         self.voice_combo.addItems(["普通话-女声", "普通话-男声", "粤语-女声", "粤语-男声", "英语-女声", "英语-男声"])
-        self.voice_combo.setCurrentIndex(0)
+        # 从配置中加载语音选择
+        voice_index = self.config_manager.get_config("tts_settings", "voice", 0)
+        self.voice_combo.setCurrentIndex(voice_index)
+        self.voice_combo.currentTextChanged.connect(lambda text: self.config_manager.set_config("tts_settings", "voice", self.voice_combo.currentIndex()))
 
         voice_layout.addWidget(voice_label)
         voice_layout.addWidget(self.voice_combo)
@@ -336,12 +426,13 @@ class RoomDanmuWindow(QMainWindow):
         speed_group.setLayout(speed_layout)
         layout.addWidget(speed_group)
 
-        speed_label = QLabel("语速: 1.0x")
+        speed_value = self.config_manager.get_config("tts_settings", "speed", 10)
+        speed_label = QLabel(f"语速: {speed_value/10.0}x")
         speed_slider = QSlider(Qt.Horizontal)
         speed_slider.setMinimum(5)
         speed_slider.setMaximum(20)
-        speed_slider.setValue(10)  # 对应1.0x
-        speed_slider.valueChanged.connect(lambda value: speed_label.setText(f"语速: {value/10.0}x"))
+        speed_slider.setValue(speed_value)  # 对应1.0x
+        speed_slider.valueChanged.connect(lambda value: [speed_label.setText(f"语速: {value/10.0}x"), self.config_manager.set_config("tts_settings", "speed", value)])
 
         speed_control_layout = QHBoxLayout()
         speed_control_layout.addWidget(speed_label)
@@ -350,6 +441,40 @@ class RoomDanmuWindow(QMainWindow):
 
         # 添加弹性空间
         layout.addStretch()
+        
+    def save_enter_templates(self):
+        """保存进入消息模板"""
+        templates = [line.strip() for line in self.enter_template_text.toPlainText().split('\n') if line.strip()]
+        if templates:
+            self.config_manager.set_config("tts_settings", "enter_tts_templates", templates)
+
+    def save_follow_templates(self):
+        """保存关注消息模板"""
+        templates = [line.strip() for line in self.follow_template_text.toPlainText().split('\n') if line.strip()]
+        if templates:
+            self.config_manager.set_config("tts_settings", "follow_tts_templates", templates)
+
+    def save_gift_templates(self):
+        """保存礼物消息模板"""
+        templates = [line.strip() for line in self.gift_template_text.toPlainText().split('\n') if line.strip()]
+        if templates:
+            self.config_manager.set_config("tts_settings", "gift_tts_templates", templates)
+
+    def save_keyword_templates(self):
+        """保存关键字回复模板"""
+        lines = self.keyword_template_text.toPlainText().split('\n')
+        keyword_templates = {}
+        for line in lines:
+            line = line.strip()
+            if line and '=' in line:
+                parts = line.split('=', 1)  # 只分割第一个等号
+                keyword = parts[0].strip()
+                templates_str = parts[1].strip()
+                templates = [t.strip() for t in templates_str.split('|') if t.strip()]
+                if keyword and templates:
+                    keyword_templates[keyword] = templates
+        if keyword_templates:
+            self.config_manager.set_config("tts_settings", "keyword_reply_templates", keyword_templates)
     def setup_timers(self):
         """设置所有定时器"""
         self.add_danmu_timer = QTimer(self)
@@ -385,6 +510,10 @@ class RoomDanmuWindow(QMainWindow):
             item = self.danmu_list.takeItem(0)
             del item
         self.danmu_counter = self.danmu_list.count()
+    def on_checkbox_state_changed(self, key, state):
+        """当复选框状态改变时保存设置"""
+        self.config_manager.set_config("danmu_settings", key, state == Qt.Checked)
+
     def on_item_clicked(self, item):
         """当列表项被点击时显示详细信息"""
         row = self.danmu_list.row(item)
