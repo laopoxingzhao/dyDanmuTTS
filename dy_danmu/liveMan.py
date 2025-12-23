@@ -290,6 +290,7 @@ class DouyinLiveWebFetcher:
         while True:
             try:
                 heartbeat = PushFrame(payload_type='hb').SerializeToString()
+                if self.ws.sock is None: break
                 self.ws.send(heartbeat, websocket.ABNF.OPCODE_PING)
                 # print("【√】发送心跳包")
                 g_logger.debug("【√】发送心跳包")
@@ -332,18 +333,18 @@ class DouyinLiveWebFetcher:
             method = msg.method
             try:
                 {
-                    'WebcastChatMessage': self._parseChatMsg,  # 聊天消息
-                    'WebcastGiftMessage': self._parseGiftMsg,  # 礼物消息
-                    'WebcastLikeMessage': self._parseLikeMsg,  # 点赞消息
-                    'WebcastMemberMessage': self._parseMemberMsg,  # 进入直播间消息
-                    'WebcastSocialMessage': self._parseSocialMsg,  # 关注消息
-                    'WebcastRoomUserSeqMessage': self._parseRoomUserSeqMsg,  # 直播间统计
-                    'WebcastFansclubMessage': self._parseFansclubMsg,  # 粉丝团消息
-                    'WebcastControlMessage': self._parseControlMsg,  # 直播间状态消息
-                    'WebcastEmojiChatMessage': self._parseEmojiChatMsg,  # 聊天表情包消息
-                    'WebcastRoomStatsMessage': self._parseRoomStatsMsg,  # 直播间统计信息
-                    'WebcastRoomMessage': self._parseRoomMsg,  # 直播间信息
-                    'WebcastRoomRankMessage': self._parseRankMsg,  # 直播间排行榜信息
+                    'WebcastChatMessage': self._parseChatMsg,                                  # 聊天消息
+                    'WebcastGiftMessage': self._parseGiftMsg,                                  # 礼物消息
+                    'WebcastLikeMessage': self._parseLikeMsg,                                  # 点赞消息
+                    'WebcastMemberMessage': self._parseMemberMsg,                              # 进入直播间消息
+                    'WebcastSocialMessage': self._parseSocialMsg,                              # 关注消息
+                    'WebcastRoomUserSeqMessage': self._parseRoomUserSeqMsg,                    # 直播间统计
+                    'WebcastFansclubMessage': self._parseFansclubMsg,                          # 粉丝团消息
+                    'WebcastControlMessage': self._parseControlMsg,                            # 直播间状态消息
+                    'WebcastEmojiChatMessage': self._parseEmojiChatMsg,                        # 聊天表情包消息
+                    'WebcastRoomStatsMessage': self._parseRoomStatsMsg,                        # 直播间统计信息
+                    'WebcastRoomMessage': self._parseRoomMsg,                                  # 直播间信息
+                    'WebcastRoomRankMessage': self._parseRankMsg,                              # 直播间排行榜信息
                     'WebcastRoomStreamAdaptationMessage': self._parseRoomStreamAdaptationMsg,  # 直播间流配置
                 }.get(method)(msg.payload)
             except Exception:
@@ -368,7 +369,7 @@ class DouyinLiveWebFetcher:
         content = message.content
         # print(f"【聊天msg】[{user_id}]{user_name}: {content}")
         g_logger.debug(f"【聊天msg】[{user_id}]{user_name}: {content}")
-        uiq.put("chat",f"{user_name}: {content}")
+        uiq.put("WebcastChatMessage",f"{user_name}: {content}")
     
     def _parseGiftMsg(self, payload):
         """礼物消息"""
@@ -378,7 +379,7 @@ class DouyinLiveWebFetcher:
         gift_cnt = message.combo_count
         # print(f"【礼物msg】{user_name} 送出了 {gift_name}x{gift_cnt}")
         g_logger.debug(f"【礼物msg】{user_name} 送出了 {gift_name}x{gift_cnt}")
-        uiq.put("gift",f"{user_name} 送出了 {gift_name}x{gift_cnt}")
+        uiq.put("WebcastGiftMessage",f"{user_name} 送出了 {gift_name}x{gift_cnt}")
     
     def _parseLikeMsg(self, payload):
         '''点赞消息'''
@@ -387,7 +388,7 @@ class DouyinLiveWebFetcher:
         count = message.count
         # print(f"【点赞msg】{user_name} 点了{count}个赞")
         g_logger.debug(f"【点赞msg】{user_name} 点了{count}个赞")
-        uiq.put("like",f"{user_name} 点了{count}个赞")
+        uiq.put("WebcastLikeMessage",f"{user_name} 点了{count}个赞")
     
     def _parseMemberMsg(self, payload):
         '''进入直播间消息'''
@@ -397,7 +398,8 @@ class DouyinLiveWebFetcher:
         gender = ["女", "男"][message.user.gender]
         # print(f"【进场msg】[{user_id}][{gender}]{user_name} 进入了直播间")
         g_logger.debug(f"【进场msg】[{user_id}][{gender}]{user_name} 进入了直播间")
-        uiq.put("member",f"{user_name} 进入了直播间")
+        uiq.put("WebcastMemberMessage",f'{user_id}][{gender}]{user_name}进入了直播间')
+     
     
     def _parseSocialMsg(self, payload):
         '''关注消息'''
@@ -406,7 +408,7 @@ class DouyinLiveWebFetcher:
         user_id = message.user.id
         # print(f"【关注msg】[{user_id}]{user_name} 关注了主播")
         g_logger.debug(f"【关注msg】[{user_id}]{user_name} 关注了主播")
-        uiq.put("social",f"{user_name} 关注了主播")
+        uiq.put("WebcastSocialMessage",f"{user_id}{user_name} 关注了主播")        
         
     def _parseRoomUserSeqMsg(self, payload):
         '''直播间统计'''
@@ -415,7 +417,8 @@ class DouyinLiveWebFetcher:
         total = message.total_pv_for_anchor
         # print(f"【统计msg】当前观看人数: {current}, 累计观看人数: {total}")
         g_logger.debug(f"【统计msg】当前观看人数: {current}, 累计观看人数: {total}")
-        uiq.put("room_user_seq",f"当前观看人数: {current}, 累计观看人数: {total}")
+        # uiq.put("room_user_seq",f"当前观看人数: {current}, 累计观看人数: {total}")
+        uiq.put("WebcastRoomUserSeqMessage",f"当前观看人数: {current}, 累计观看人数: {total}")
     
     def _parseFansclubMsg(self, payload):
         '''粉丝团消息'''
@@ -423,7 +426,8 @@ class DouyinLiveWebFetcher:
         content = message.content
         # print(f"【粉丝团msg】 {content}")
         g_logger.debug(f"【粉丝团msg】 {content}")
-        uiq.put("fansclub",f"{content}")
+        # uiq.put("fansclub",f"{content}")
+        uiq.put("WebcastFansclubMessage",f"{content}")
     
     def _parseEmojiChatMsg(self, payload):
         '''聊天表情包消息'''
@@ -434,7 +438,8 @@ class DouyinLiveWebFetcher:
         default_content = message.default_content
         # print(f"【聊天表情包id】 {emoji_id},user：{user},common:{common},default_content:{default_content}")
         g_logger.debug(f"【聊天表情包id】 {emoji_id},user：{user},common:{common},default_content:{default_content}")
-        uiq.put("emoji_chat",f"{emoji_id},user：{user},common:{common},default_content:{default_content}")
+        # uiq.put("emoji_chat",f"{emoji_id},user：{user},common:{common},default_content:{default_content}")
+        uiq.put("WebcastEmojiChatMessage",f"{emoji_id},user：{user},common:{common},default_content:{default_content}")
     
     def _parseRoomMsg(self, payload):
         message = RoomMessage().parse(payload)
@@ -442,21 +447,24 @@ class DouyinLiveWebFetcher:
         room_id = common.room_id
         # print(f"【直播间msg】直播间id:{room_id}")
         g_logger.debug(f"【直播间msg】直播间id:{room_id}")
-        uiq.put("room",f"直播间id:{room_id}")
+        # uiq.put("room",f"直播间id:{room_id}")
+        uiq.put("WebcastRoomMessage",f"直播间id:{room_id}")
     
     def _parseRoomStatsMsg(self, payload):
         message = RoomStatsMessage().parse(payload)
         display_long = message.display_long
         # print(f"【直播间统计msg】{display_long}")
         g_logger.debug(f"【直播间统计msg】{display_long}")
-        uiq.put("room_stats",f"{display_long}")
+        # uiq.put("room_stats",f"{display_long}")
+        uiq.put("WebcastRoomStatsMessage",f"{display_long}")
     
     def _parseRankMsg(self, payload):
         message = RoomRankMessage().parse(payload)
         ranks_list = message.ranks_list
         # print(f"【直播间排行榜msg】{ranks_list}")
         g_logger.debug(f"【直播间排行榜msg】{ranks_list}")
-        uiq.put("rank",f"{ranks_list}")
+        # uiq.put("rank",f"{ranks_list}")
+        uiq.put("WebcastRankMessage",f"{ranks_list}")
     
     def _parseControlMsg(self, payload):
         '''直播间状态消息'''
@@ -472,4 +480,5 @@ class DouyinLiveWebFetcher:
         adaptationType = message.adaptation_type
         # print(f'直播间adaptation: {adaptationType}')
         g_logger.debug(f'直播间adaptation: {adaptationType}')
-        uiq.put("room_stream_adaptation",f'直播间adaptation: {adaptationType}')
+        # uiq.put("room_stream_adaptation",f'直播间adaptation: {adaptationType}')
+        uiq.put("WebcastRoomStreamAdaptationMessage",f'直播间adaptation: {adaptationType}')

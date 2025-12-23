@@ -33,61 +33,7 @@ def run_command_line_mode(live_id):
 
 
 
-def run_gui_mode():
-    g_logger.info("正在启动GUI界面...")
-    """运行GUI模式"""
-    try:
-        from PyQt5.QtWidgets import QApplication
-        from ui.room_input_ui import RoomInputWindow
-        from dy_danmu.liveMan import DouyinLiveWebFetcher
-        import sys
-        from threading import Thread
-              
-        app = QApplication(sys.argv)
-        room_window = RoomInputWindow()
-        
-        # 定义处理房间选择的函数
-        def handle_room_selected(room_id):
-            # 隐藏房间选择窗口
-            room_window.hide()
-            
-            # 保存对room_danmu_window的引用，防止被垃圾回收导致窗口闪退
-            room_window.room_danmu_window = RoomDanmuWindow(room_id.strip())
-            room_window.room_danmu_window.show()
-            # 连接窗口关闭信号，确保窗口关闭后重新显示输入窗口
-            room_window.room_danmu_window.window_closed.connect(room_window.show)
-            class Room(DouyinLiveWebFetcher):
-                def _wsOnMessage(self, ws, message):
-                    super()._wsOnMessage(ws, message)
-                    # room_window.room_danmu_window.add_danmuSign.emit()
-            room = Room(room_id.strip())
 
-
-                
-            this_thread = Thread(target=room.start)
-            this_thread.setDaemon(True)
-            this_thread.start()
-            
-        # 连接房间选择信号
-        room_window.room_selected.connect(handle_room_selected)
-        
-        # 显示房间选择窗口
-        room_window.show()
-        sys.exit(app.exec_())
-            
-    except ImportError as e:
-        print(f"无法启动GUI界面: {e}")
-        print("请确保已安装PyQt5: pip install PyQt5")
-
-
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-      pass
-    elif sys.argv[1] == 'gui':
-        run_gui_mode()
-    else:
-        live_id = sys.argv[1]
-        run_command_line_mode(live_id)
 
 
 class GuiRunner:
@@ -115,9 +61,19 @@ class GuiRunner:
         self.this_thread = Thread(target=self.room.start)
         # this_thread.setDaemon(True)
         self.this_thread.start()
+        self.room_window.hide()
     
     def closeDanmu(self):
-        
+        self.room_window.show()
         self.room.stop()
 
-        
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+      pass
+    elif sys.argv[1] == 'gui':
+        runer = GuiRunner()
+        runer.run()
+    else:
+        live_id = sys.argv[1]
+        run_command_line_mode(live_id)
+

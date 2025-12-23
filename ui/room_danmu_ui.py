@@ -2,7 +2,7 @@ import sys
 import random
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QListWidget, QPushButton, 
-                             QSplitter, QTextEdit, QCheckBox)
+                             QSplitter, QTextEdit, QCheckBox,QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont, QColor
 import datetime
@@ -25,10 +25,21 @@ class RoomDanmuWindow(QMainWindow):
         self.setWindowTitle(f"直播间 {self.room_id} 弹幕")
         self.setGeometry(100, 100, 900, 700)
         
-        # 创建中央部件
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
+
+        qtw = QTabWidget()
         
+     
+        # qtw.addTab(central_widget, "tts_config")
+        self.setCentralWidget(qtw)
+        
+
+        # 创建中央部件
+       
+        self.danmugui(qtw)
+
+    def danmugui(self, qtw):
+        central_widget = QWidget()
+        qtw.addTab(central_widget, "弹幕")
         # 设置样式表
         self.setStyleSheet("""
             QMainWindow {
@@ -93,7 +104,8 @@ class RoomDanmuWindow(QMainWindow):
                 background-color: #4CAF50;
             }
         """)
-        
+      
+
         # 创建主布局
         main_layout = QVBoxLayout()
         main_layout.setSpacing(15)
@@ -112,12 +124,19 @@ class RoomDanmuWindow(QMainWindow):
         # 添加第一排5个复选按钮
         checkbox_layout = QHBoxLayout()
         checkbox_layout.setSpacing(15)
-        self.checkboxes = []
-        checkbox_labels = ["显示聊天", "显示礼物", "显示关注", "显示点赞", "显示统计"]
-        for i in range(5):
-            checkbox = QCheckBox(checkbox_labels[i])
+        self.checkboxes = {}
+        checkbox_labels = {
+            "chat": "显示聊天", 
+            "gift": "显示礼物", 
+            "social": "显示关注", 
+            
+            "like": "显示点赞", 
+            "room_user_seq": "显示统计"
+        }
+        for key, label in checkbox_labels.items():
+            checkbox = QCheckBox(label)
             checkbox.setChecked(True)  # 默认选中
-            self.checkboxes.append(checkbox)
+            self.checkboxes[key] = checkbox
             checkbox_layout.addWidget(checkbox)
         checkbox_layout.addStretch()  # 添加弹性空间
         main_layout.addLayout(checkbox_layout)
@@ -174,6 +193,9 @@ class RoomDanmuWindow(QMainWindow):
         
     def setup_timers(self):
         """设置所有定时器"""
+        self.add_danmu_timer = QTimer(self)
+        self.add_danmu_timer.timeout.connect(self.add_danmu)
+        self.add_danmu_timer.start(500)
         
         # 设置清理弹幕的定时器，每5分钟清理一半旧数据
         self.clean_danmu_timer = QTimer(self)
@@ -187,12 +209,11 @@ class RoomDanmuWindow(QMainWindow):
     def add_danmu(self):
         """添加一条随机弹幕"""
     
-        if not uiq.queue.empty():
-            print("queue.size()", uiq.queue.size())
-            d = uiq.queue.get()
-            # print("add_danmu")
-            self.danmu_list.addItem(d)
-            self.danmu_counter += 1
+        if not uiq.empty():
+            for i in range(uiq.size()):
+                d = uiq.queue.get()
+                self.danmu_list.addItem(str(d))
+                self.danmu_counter += 1
             #判断当前是否在最底部
             if self.danmu_list.verticalScrollBar().value() == self.danmu_list.verticalScrollBar().maximum():
                # 自动滚动到底部
@@ -213,14 +234,16 @@ class RoomDanmuWindow(QMainWindow):
         
     def clear_danmu(self):
         """清空弹幕列表"""
-        self.danmu_list.clear()
+        # self.danmu_list.clear()
+        uiq.clear()
         self.danmu_counter = 0  # 重置计数器
         
     def closeEvent(self, event):
+        self.clear_danmu()
         """窗口关闭事件"""
         # 停止所有定时器
-        # if hasattr(self, 'add_danmu_timer'):
-        #     self.add_danmu_timer.stop()
+        if hasattr(self, 'add_danmu_timer'):
+            self.add_danmu_timer.stop()
         if hasattr(self, 'clean_danmu_timer'):
             self.clean_danmu_timer.stop()
             
