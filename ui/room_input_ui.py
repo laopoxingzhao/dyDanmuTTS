@@ -100,7 +100,7 @@ class RoomInputWindow(QMainWindow):
             "确认", 
             f"确认要抓取直播间 {room_id} 的弹幕吗？",
             QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.Yes
         )
         
         if reply == QMessageBox.Yes:

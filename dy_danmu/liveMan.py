@@ -1,10 +1,6 @@
 #!/usr/bin/python
 # coding:utf-8
 
-# @FileName:    liveMan.py
-# @Time:        2024/1/2 21:51
-# @Author:      bubu
-# @Project:     douyinLiveWebFetcher
 
 import codecs
 import gzip
