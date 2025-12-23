@@ -31,13 +31,7 @@ def run_command_line_mode(live_id):
     # room.get_room_status() # 失效
     room.start()
 
-
-
-
-
-
 class GuiRunner:
-    
     def __init__(self):
         g_logger.info("正在启动GUI界面...")
     

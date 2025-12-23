@@ -163,8 +163,9 @@ cython_debug/
 .vscode/
 
 # 日志文件
-log/*.log
-logs/
+log/app.log
+log/*
+logs/*
 
 # 项目特定文件
 config/log/__pycache__/
@@ -177,3 +178,4 @@ ui/__pycache__/
 pb2*.py
 *_pb2.py
 *_pb2_grpc.py
+

@@ -60,7 +60,13 @@ class ConfigManager:
                 },
                 "volume": 70,
                 "voice": 0,  # 对应下拉框的索引
-                "speed": 10   # 对应滑块的值
+                "speed": 10,   # 对应滑块的值
+                # TTS队列配置
+                "tts_queue_settings": {
+                    "dedup_time_window": 30,  # 去重时间窗口（秒）
+                    "min_interval": 5,        # 同类型消息最小间隔（秒）
+                    "max_queue_size": 20      # 队列最大长度
+                }
             },
             "danmu_settings": {
                 # 弹幕显示设置，对应checkbox_labels中的键

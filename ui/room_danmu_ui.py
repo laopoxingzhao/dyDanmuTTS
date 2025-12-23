@@ -2,12 +2,13 @@ import sys
 import random
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QListWidget, QPushButton, 
-                             QSplitter, QTextEdit,QComboBox, QCheckBox, QTabWidget, QGroupBox, QSlider,QLineEdit)
+                             QSplitter, QTextEdit, QCheckBox,QTabWidget,QGroupBox, QLineEdit)
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont, QColor
 import datetime
-from tool.myqueue import uiq
+from tool.myqueue import uiq, ttsq
 from config.config_manager import ConfigManager
+
 checkbox_labels = {
                     'WebcastChatMessage':  '聊天消息',
                     'WebcastGiftMessage':   '礼物消息',
@@ -22,6 +23,7 @@ checkbox_labels = {
                     # 'WebcastRoomRankMessage':  '直播间排行榜信息',
                     # 'WebcastRoomStreamAdaptationMessage':  '直播间流配置',
         }
+
 class RoomDanmuWindow(QMainWindow):
     # 定义信号，用于关闭窗口事件
     window_closed = pyqtSignal()
@@ -204,30 +206,9 @@ class RoomDanmuWindow(QMainWindow):
         button_layout.addWidget(self.close_button)
         main_layout.addLayout(button_layout)
 
-
-
-    # def ttsPlayerConfigGui(self,qtw):
-    #     """设置TTS参数播放"""
-    #     win = QWidget()
-    #     layout = QVBoxLayout()
-    #     # qtw.ad(layout)
-    #     qtw.addTab(win,'配置')
-    #     win.setLayout(layout)
-
-    #     # TTS总开关
-    #     self.tts_enabled = QCheckBox("启用TTS语音播报")
-    #     layout.addWidget(self.tts_enabled)
-        
-
-    #     # 进场消息TTS
-    #     enter_group = QGroupBox("用户进场TTS")
-    #     enter_layout = QVBoxLayout()
-    #     self.enter_tts_enabled = QCheckBox("启用进场TTS播报")
-    #     enter_layout.addWidget(self.enter_tts_enabled)
-    #     enter_group.setLayout(enter_layout)
-    #     layout.addWidget(enter_group)
-        
-
+    def on_checkbox_state_changed(self, key, state):
+        """当复选框状态改变时保存设置"""
+        self.config_manager.set_config("danmu_settings", key, state == Qt.Checked)
 
     def ttsPlayerConfigGui(self, qtw):
         """设置TTS参数播放"""
@@ -382,6 +363,45 @@ class RoomDanmuWindow(QMainWindow):
         self.keyword_template_text.textChanged.connect(self.save_keyword_templates)
         keyword_layout.addWidget(self.keyword_template_text)
 
+        # TTS队列设置
+        tts_queue_group = QGroupBox("TTS队列设置")
+        tts_queue_layout = QVBoxLayout()
+        tts_queue_group.setLayout(tts_queue_layout)
+        layout.addWidget(tts_queue_group)
+
+        # 去重时间窗口设置
+        dedup_layout = QHBoxLayout()
+        dedup_label = QLabel("去重时间窗口(秒):")
+        self.dedup_time_window = QLineEdit()
+        dedup_time_value = self.config_manager.get_config("tts_settings", "tts_queue_settings.dedup_time_window", 30)
+        self.dedup_time_window.setText(str(dedup_time_value))
+        self.dedup_time_window.textChanged.connect(lambda text: self.update_tts_queue_config("dedup_time_window", int(text) if text.isdigit() else 30))
+        dedup_layout.addWidget(dedup_label)
+        dedup_layout.addWidget(self.dedup_time_window)
+        tts_queue_layout.addLayout(dedup_layout)
+
+        # 最小间隔设置
+        interval_layout = QHBoxLayout()
+        interval_label = QLabel("同类型消息最小间隔(秒):")
+        self.min_interval = QLineEdit()
+        interval_value = self.config_manager.get_config("tts_settings", "tts_queue_settings.min_interval", 5)
+        self.min_interval.setText(str(interval_value))
+        self.min_interval.textChanged.connect(lambda text: self.update_tts_queue_config("min_interval", int(text) if text.isdigit() else 5))
+        interval_layout.addWidget(interval_label)
+        interval_layout.addWidget(self.min_interval)
+        tts_queue_layout.addLayout(interval_layout)
+
+        # 最大队列长度设置
+        queue_size_layout = QHBoxLayout()
+        queue_size_label = QLabel("最大队列长度:")
+        self.max_queue_size = QLineEdit()
+        queue_size_value = self.config_manager.get_config("tts_settings", "tts_queue_settings.max_queue_size", 20)
+        self.max_queue_size.setText(str(queue_size_value))
+        self.max_queue_size.textChanged.connect(lambda text: self.update_tts_queue_config("max_queue_size", int(text) if text.isdigit() else 20))
+        queue_size_layout.addWidget(queue_size_label)
+        queue_size_layout.addWidget(self.max_queue_size)
+        tts_queue_layout.addLayout(queue_size_layout)
+
         # 音量控制
         volume_group = QGroupBox("音量设置")
         volume_layout = QVBoxLayout()
@@ -475,6 +495,22 @@ class RoomDanmuWindow(QMainWindow):
                     keyword_templates[keyword] = templates
         if keyword_templates:
             self.config_manager.set_config("tts_settings", "keyword_reply_templates", keyword_templates)
+
+    def update_tts_queue_config(self, key, value):
+        """更新TTS队列配置"""
+        tts_queue_settings = self.config_manager.get_config("tts_settings", "tts_queue_settings", {})
+        tts_queue_settings[key] = value
+        self.config_manager.set_config("tts_settings", "tts_queue_settings", tts_queue_settings)
+        
+        # 更新全局TTS队列配置
+        if key == "dedup_time_window":
+            ttsq.dedup_time_window = value
+        elif key == "min_interval":
+            ttsq.min_interval = value
+        elif key == "max_queue_size":
+            ttsq.max_queue_size = value
+            ttsq.recent_messages = deque(maxlen=value)  # 更新最近消息队列长度
+
     def setup_timers(self):
         """设置所有定时器"""
         self.add_danmu_timer = QTimer(self)
@@ -510,9 +546,6 @@ class RoomDanmuWindow(QMainWindow):
             item = self.danmu_list.takeItem(0)
             del item
         self.danmu_counter = self.danmu_list.count()
-    def on_checkbox_state_changed(self, key, state):
-        """当复选框状态改变时保存设置"""
-        self.config_manager.set_config("danmu_settings", key, state == Qt.Checked)
 
     def on_item_clicked(self, item):
         """当列表项被点击时显示详细信息"""
