@@ -6,19 +6,17 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont, QColor
 import datetime
-
+from tool.myqueue import uiq
 
 class RoomDanmuWindow(QMainWindow):
     # 定义信号，用于关闭窗口事件
     window_closed = pyqtSignal()
+    add_danmuSign = pyqtSignal()
     
     def __init__(self, room_id):
         super().__init__()
         self.room_id = room_id
         self.danmu_counter = 0  # 弹幕计数器
-        self.user_names = ["用户A", "用户B", "用户C", "用户D", "用户E", "小明", "小红", "小刚", "小李", "小王"]  # 用户名列表
-        self.messages = ["这直播不错！", "主播好帅", "关注了关注了", "666666", "礼物刷起来", "学到了", "支持支持", 
-                        "讲得真好", "收藏了", "下次还来", "给力", "点赞", "投币", "分享了", "很棒的内容"]  # 消息列表
         self.init_ui()
         self.setup_timers()  # 设置定时器
         
@@ -176,47 +174,29 @@ class RoomDanmuWindow(QMainWindow):
         
     def setup_timers(self):
         """设置所有定时器"""
-        # 设置添加弹幕的定时器，每秒添加一条随机弹幕
-        self.add_danmu_timer = QTimer(self)
-        self.add_danmu_timer.timeout.connect(self.add_random_danmu)
-        self.add_danmu_timer.start(1000)  # 每1000毫秒(1秒)触发一次
         
         # 设置清理弹幕的定时器，每5分钟清理一半旧数据
         self.clean_danmu_timer = QTimer(self)
         self.clean_danmu_timer.timeout.connect(self.clean_old_danmu)
         self.clean_danmu_timer.start(5 * 1000 * 60)  # 每5分钟触发一次 (5 * 60 * 1000 毫秒)
 
-    def add_random_danmu(self):
+
+
+        self.add_danmuSign.connect(self.add_danmu)
+
+    def add_danmu(self):
         """添加一条随机弹幕"""
-        # 生成随机数据
-        user = random.choice(self.user_names)
-        message = random.choice(self.messages)
-        time_str = datetime.datetime.now().strftime("%H:%M:%S")
-        
-        # 创建弹幕数据
-        danmu_data = {
-            "user": user,
-            "message": message,
-            "time": time_str,
-            "id": self.danmu_counter
-        }
-        
-        # 增加计数器
-        self.danmu_counter += 1
-        
-        # 添加到列表
-        display_text = f"[{danmu_data['time']}] {danmu_data['user']}: {danmu_data['message']}"
-        self.danmu_list.addItem(display_text)
-        
-        #判断当前是否在最底部
-        if self.danmu_list.verticalScrollBar().value() == self.danmu_list.verticalScrollBar().maximum():
-            
-            # 自动滚动到底部
-            self.danmu_list.scrollToBottom()
-        
-        # 为最新的弹幕项设置样式
-        last_item = self.danmu_list.item(self.danmu_list.count() - 1)
-        last_item.setBackground(QColor(240, 248, 255))  # 淡蓝色背景
+    
+        if not uiq.queue.empty():
+            print("queue.size()", uiq.queue.size())
+            d = uiq.queue.get()
+            # print("add_danmu")
+            self.danmu_list.addItem(d)
+            self.danmu_counter += 1
+            #判断当前是否在最底部
+            if self.danmu_list.verticalScrollBar().value() == self.danmu_list.verticalScrollBar().maximum():
+               # 自动滚动到底部
+                self.danmu_list.scrollToBottom()
         
     def clean_old_danmu(self):
         """清理一半的旧数据"""
@@ -239,8 +219,8 @@ class RoomDanmuWindow(QMainWindow):
     def closeEvent(self, event):
         """窗口关闭事件"""
         # 停止所有定时器
-        if hasattr(self, 'add_danmu_timer'):
-            self.add_danmu_timer.stop()
+        # if hasattr(self, 'add_danmu_timer'):
+        #     self.add_danmu_timer.stop()
         if hasattr(self, 'clean_danmu_timer'):
             self.clean_danmu_timer.stop()
             

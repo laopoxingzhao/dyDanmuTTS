@@ -5,7 +5,6 @@ import os
 """
 日志管理器
 """
-logg = ''
 
 class LogManager:
     def __init__(self, log_file_path: str, log_level: int = logging.DEBUG):
@@ -33,11 +32,11 @@ class LogManager:
                 backupCount=3,  # 保留3个备份文件
                 encoding='utf-8'  # 设置编码为UTF-8
             )
-            file_handler.setLevel(self.log_level)
+            file_handler.setLevel(self.log_level+1)
 
             console_handler = logging.StreamHandler()
-            
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            # '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
             console_handler.setFormatter(formatter)
             file_handler.setFormatter(formatter)
@@ -52,3 +51,6 @@ class LogManager:
         # def get_logger(self):
         #     return self.logger
 
+
+g_loggerMgr = LogManager("log/app.log")
+g_logger = g_loggerMgr.logger

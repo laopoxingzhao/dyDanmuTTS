@@ -107,7 +107,7 @@ class RoomInputWindow(QMainWindow):
             # 发送房间ID信号
             self.room_selected.emit(room_id)
             # 关闭当前窗口
-            self.close()
+            # self.close()
            
 
 
