@@ -1,6 +1,6 @@
 from PyQt5.QtCore import pyqtSignal
 from config.config_manager import global_config_manager
-from tts.tts_handler import TTSHandler
+from tts.optimized_tts_handler import OptimizedTTSHandler as TTSHandler
 
 
 class TTSController:

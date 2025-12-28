@@ -28,7 +28,6 @@ from urllib3.util.url import parse_url
 
 from config.log import g_logger
 
-from tool.myqueue import uiq 
 
 
 def execute_js(js_file: str):

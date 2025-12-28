@@ -5,7 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from config.config import config_manager
 from config.log import g_logger
-from tts.tts_handler import init_tts_handler
+from tts.optimized_tts_handler import init_optimized_tts_handler as init_tts_handler
 
 class TTSConfigPanel(QWidget):
     def __init__(self):
