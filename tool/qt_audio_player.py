@@ -24,6 +24,10 @@ class QtAudioPlayer(QObject):
         self._is_paused = False
         self._volume = 1.0
         
+        # 播放间隔控制
+        self._min_play_interval = 0.5  # 最小播放间隔（秒）
+        self._last_play_end_time = 0
+        
         # Qt媒体播放器
         self.media_player = None
         self._playback_timer = None
@@ -38,8 +42,16 @@ class QtAudioPlayer(QObject):
             'total_duration': 0,
             'average_load_time': 0,
             'cache_hits': 0,
-            'cache_misses': 0
+            'cache_misses': 0,
+            'playback_errors': 0,
+            'successful_plays': 0,
+            'last_play_time': 0,
+            'average_playback_duration': 0
         }
+        
+        # 播放状态监控
+        self._playback_start_time = 0
+        self._last_file_path = None
         
         # 初始化媒体播放器
         self._init_media_player()
@@ -163,9 +175,9 @@ class QtAudioPlayer(QObject):
                 self.stats['cache_misses'] += 1
                 return False
     
-    def play_file(self, file_path: str, cache_key: Optional[str] = None, 
-                 fade_in: int = 0, loops: int = 0) -> bool:
-        """播放音频文件"""
+    def play_file(self, file_path: str, cache_key: Optional[str] = None,
+                 fade_in: int = 0, loops: int = 0, wait_for_completion: bool = True) -> bool:
+        """播放音频文件（优化版本）"""
         if not os.path.exists(file_path):
             g_logger.error(f"音频文件不存在: {file_path}")
             return False
@@ -178,8 +190,21 @@ class QtAudioPlayer(QObject):
             try:
                 start_time = time.time()
                 
-                # 停止当前播放
-                self.stop()
+                # 检查播放间隔控制
+                current_time = time.time()
+                if self._last_play_end_time > 0:
+                    time_since_last_play = current_time - self._last_play_end_time
+                    if time_since_last_play < self._min_play_interval:
+                        wait_time = self._min_play_interval - time_since_last_play
+                        g_logger.debug(f"播放间隔控制，等待 {wait_time:.2f} 秒")
+                        time.sleep(wait_time)
+                
+                # 检查是否正在播放，如果是则先停止
+                if self.is_playing():
+                    g_logger.debug("当前有音频正在播放，先停止...")
+                    self.stop()
+                    # 添加短暂延迟确保停止完成
+                    time.sleep(0.1)
                 
                 self._current_file = file_path
                 self._is_paused = False
@@ -188,35 +213,52 @@ class QtAudioPlayer(QObject):
                 if cache_key and cache_key in self._preloaded_sounds:
                     media_content = self._preloaded_sounds[cache_key]
                     self.media_player.setMedia(media_content)
+                    g_logger.debug(f"使用预加载音频: {cache_key}")
                 else:
                     # 直接加载文件
                     url = QUrl.fromLocalFile(file_path)
                     media_content = QMediaContent(url)
                     self.media_player.setMedia(media_content)
+                    g_logger.debug(f"直接加载音频文件: {file_path}")
                 
                 # 设置音量
                 self.set_volume(self._volume)
                 
+                # 等待媒体加载完成
+                time.sleep(0.05)
+                
                 # 开始播放
                 self.media_player.play()
+                
+                # 验证播放是否真正开始
+                if self.media_player.state() != QMediaPlayer.PlayingState:
+                    g_logger.warning(f"音频播放未能启动: {file_path}")
+                    return False
+                
+                g_logger.debug(f"开始播放音频: {file_path}")
                 
                 # Qt的QMediaPlayer不支持loops参数，但可以通过信号重新播放
                 # 这里简化处理，只播放一次
                 
-                # 等待播放完成
-                self._wait_for_playback_complete()
+                # 根据参数决定是否等待播放完成
+                if wait_for_completion:
+                    self._wait_for_playback_complete()
+                    g_logger.debug(f"播放音频文件完成: {file_path}")
                 
                 self.stats['total_played'] += 1
                 self.stats['total_duration'] += time.time() - start_time
+                self.stats['successful_plays'] += 1
                 
-                g_logger.debug(f"播放音频文件完成: {file_path}")
                 return True
                 
             except Exception as e:
                 g_logger.error(f"播放音频失败 {file_path}: {e}")
+                self.stats['playback_errors'] += 1
                 return False
             finally:
-                self._current_file = None
+                if wait_for_completion:
+                    self._current_file = None
+                    self._last_play_end_time = time.time()
     
     def play_sound_effect(self, file_path: str, volume: float = 1.0) -> bool:
         """播放音效（叠加播放）"""
@@ -305,6 +347,16 @@ class QtAudioPlayer(QObject):
         """获取当前音量"""
         return self._volume
     
+    def set_min_play_interval(self, interval: float):
+        """设置最小播放间隔（秒）"""
+        with self._lock:
+            self._min_play_interval = max(0.1, interval)  # 最小0.1秒
+            g_logger.debug(f"设置最小播放间隔为: {self._min_play_interval} 秒")
+    
+    def get_min_play_interval(self) -> float:
+        """获取最小播放间隔"""
+        return self._min_play_interval
+    
     def is_playing(self) -> bool:
         """检查是否正在播放"""
         if not self.initialized or not self.media_player:
@@ -341,7 +393,7 @@ class QtAudioPlayer(QObject):
             g_logger.info("已清空预加载音频缓存")
     
     def get_stats(self) -> Dict:
-        """获取播放统计信息"""
+        """获取播放统计信息（增强版本）"""
         with self._lock:
             stats = self.stats.copy()
             stats['preloaded_count'] = len(self._preloaded_sounds)
@@ -349,10 +401,20 @@ class QtAudioPlayer(QObject):
                 stats['cache_hits'] / max(stats['cache_hits'] + stats['cache_misses'], 1)
             )
             
+            # 计算成功率
+            total_attempts = stats['successful_plays'] + stats['playback_errors']
+            stats['success_rate'] = stats['successful_plays'] / max(total_attempts, 1)
+            
             if stats['total_played'] > 0:
                 stats['average_duration'] = stats['total_duration'] / stats['total_played']
             else:
                 stats['average_duration'] = 0
+            
+            # 添加播放状态信息
+            stats['is_playing'] = self.is_playing()
+            stats['is_paused'] = self.is_paused()
+            stats['current_file'] = self._current_file
+            stats['last_play_time_ago'] = time.time() - stats['last_play_time'] if stats['last_play_time'] > 0 else 0
             
             return stats
     
@@ -376,46 +438,91 @@ class QtAudioPlayer(QObject):
             g_logger.error(f"获取音频设备信息失败: {e}")
             return {}
     
-    def _wait_for_playback_complete(self):
-        """等待播放完成"""
+    def _wait_for_playback_complete(self, timeout_ms: int = 30000):
+        """等待播放完成（优化版本，避免忙等待）"""
         try:
-            if self.media_player:
-                # 使用定时器检查播放状态
-                while self.media_player.state() == QMediaPlayer.PlayingState:
-                    if self._is_paused:
-                        time.sleep(0.01)
-                        continue
-                    
-                    if not self._current_file:  # 被停止了
-                        break
-                    
-                    time.sleep(0.01)
-                    
+            if not self.media_player or not self._current_file:
+                return
+            
+            start_time = time.time()
+            timeout_seconds = timeout_ms / 1000.0
+            
+            # 使用事件等待而不是忙等待
+            while self.media_player.state() == QMediaPlayer.PlayingState:
+                if self._is_paused:
+                    time.sleep(0.1)
+                    continue
+                
+                if not self._current_file:  # 被停止了
+                    break
+                
+                # 检查超时
+                if time.time() - start_time > timeout_seconds:
+                    g_logger.warning(f"播放等待超时: {timeout_seconds}秒")
+                    break
+                
+                # 使用更长的睡眠间隔减少CPU占用
+                time.sleep(0.1)
+                
         except Exception as e:
             g_logger.error(f"等待播放完成失败: {e}")
     
     def _on_state_changed(self, state):
-        """媒体播放器状态变化回调"""
+        """媒体播放器状态变化回调（增强版本）"""
         try:
+            current_time = time.time()
+            
             if state == QMediaPlayer.StoppedState:
+                # 计算播放时长
+                if self._playback_start_time > 0:
+                    playback_duration = current_time - self._playback_start_time
+                    self.stats['average_playback_duration'] = (
+                        (self.stats['average_playback_duration'] * self.stats['successful_plays'] + playback_duration) /
+                        (self.stats['successful_plays'] + 1)
+                    )
+                    self._playback_start_time = 0
+                
                 self._current_file = None
                 self._is_paused = False
-                self.playback_finished.emit()
+                
+                # 只有在正常播放完成时才发送信号
+                if self._last_file_path:
+                    g_logger.debug(f"音频播放完成: {os.path.basename(self._last_file_path)}")
+                    self.playback_finished.emit()
+                    self._last_file_path = None
+                    
             elif state == QMediaPlayer.PausedState:
                 self._is_paused = True
+                g_logger.debug("音频播放已暂停")
+                
             elif state == QMediaPlayer.PlayingState:
                 self._is_paused = False
+                if self._playback_start_time == 0 and self._current_file:
+                    self._playback_start_time = current_time
+                    self._last_file_path = self._current_file
+                    self.stats['last_play_time'] = current_time
+                    g_logger.debug(f"音频播放开始: {os.path.basename(self._current_file)}")
                 
         except Exception as e:
             g_logger.error(f"处理播放器状态变化失败: {e}")
     
     def _on_error(self):
-        """媒体播放器错误回调"""
+        """媒体播放器错误回调（增强版本）"""
         try:
             if self.media_player:
                 error_string = self.media_player.errorString()
-                g_logger.error(f"媒体播放器错误: {error_string}")
-                self.error_occurred.emit(error_string)
+                error_type = self.media_player.error()
+                
+                # 更新错误统计
+                self.stats['playback_errors'] += 1
+                
+                g_logger.error(f"媒体播放器错误 [{error_type}]: {error_string}")
+                
+                # 如果有当前播放文件，记录错误
+                if self._current_file:
+                    g_logger.error(f"播放失败的文件: {self._current_file}")
+                
+                self.error_occurred.emit(f"{error_string} (错误类型: {error_type})")
                 
         except Exception as e:
             g_logger.error(f"处理播放器错误失败: {e}")
@@ -432,8 +539,13 @@ class QtAudioPlayer(QObject):
     
     def _check_playback_finished(self):
         """检查播放是否完成"""
-        if self.media_player and self.media_player.state() == QMediaPlayer.StoppedState:
-            self.playback_finished.emit()
+        try:
+            if self.media_player and self.media_player.state() == QMediaPlayer.StoppedState:
+                if self._current_file:  # 确保有正在播放的文件
+                    g_logger.debug(f"播放完成检测: {self._current_file}")
+                    self.playback_finished.emit()
+        except Exception as e:
+            g_logger.error(f"检查播放完成状态失败: {e}")
 
 
 # 全局Qt音频播放器实例

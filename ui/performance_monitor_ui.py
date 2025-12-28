@@ -452,7 +452,7 @@ class PerformanceMonitor(QWidget):
             
             # 估算缓存大小（假设每个文件平均50KB）
             cache_size_mb = (tts_stats.get('cache_size', 0) * 50) / 1024
-            self.cache_size_label.setText(f"{cache_size_mb:.1f} MB")
+            self.cache_size_label.value_label.setText(f"{cache_size_mb:.1f} MB")
             
         except Exception as e:
             g_logger.error(f"更新缓存统计失败: {e}")

@@ -3,18 +3,14 @@ import threading
 import edge_tts
 from config.config import config_manager
 from config.log import g_logger
-import re
 import time
-from collections import deque
-from queue import Empty, PriorityQueue
+from queue import PriorityQueue
 import os
 import glob
 import hashlib
-import pygame
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Tuple
-import weakref
+from typing import Optional, Dict
 from tool.qt_audio_player import get_audio_player
 from tool.memory_manager import get_memory_manager, get_temp_file_manager
 
@@ -161,11 +157,7 @@ class OptimizedTTSHandler:
     
     def __init__(self, config_manager=None):
         # 配置管理器
-        if config_manager:
-            self.config_manager = config_manager
-        else:
-            from config.config import config_manager
-            self.config_manager = config_manager
+        self.config_manager = config_manager or config_manager
         
         # 音频缓存
         self.audio_cache = AudioCache(max_size=50)
@@ -206,14 +198,6 @@ class OptimizedTTSHandler:
         # 注册配置变更回调
         self._register_config_callback()
     
-    def _init_pygame_mixer(self):
-        """初始化pygame mixer（使用优化的音频播放器）"""
-        try:
-            if not self.audio_player.initialized:
-                self.audio_player.initialize()
-                g_logger.info("优化音频播放器初始化成功")
-        except Exception as e:
-            g_logger.error(f"优化音频播放器初始化失败: {e}")
     
     def _load_tts_settings(self):
         """从配置加载TTS参数"""
@@ -285,30 +269,23 @@ class OptimizedTTSHandler:
                 return True
             except:
                 # 队列满了，移除一个最低优先级的旧项目
-                try:
-                    # 获取并丢弃最低优先级的项目
-                    old_items = []
-                    while not self.tts_queue.empty():
-                        old_items.append(self.tts_queue.get_nowait())
+                old_items = []
+                while not self.tts_queue.empty():
+                    old_items.append(self.tts_queue.get_nowait())
+                
+                # 保留除了最低优先级之外的项目
+                if old_items:
+                    min_priority_item = max(old_items, key=lambda x: x.priority)
+                    old_items.remove(min_priority_item)
                     
-                    # 保留除了最低优先级之外的项目
-                    if old_items:
-                        # 找到最低优先级的项目
-                        min_priority_item = max(old_items, key=lambda x: x.priority)
-                        old_items.remove(min_priority_item)
-                        
-                        # 重新添加剩余项目
-                        for item in old_items:
-                            self.tts_queue.put_nowait(item)
-                    
-                    # 添加新项目
-                    self.tts_queue.put_nowait(tts_item)
-                    g_logger.warning(f"TTS队列已满，已移除低优先级项目")
-                    return True
-                    
-                except Exception as e:
-                    g_logger.error(f"处理TTS队列满时出错: {e}")
-                    return False
+                    # 重新添加剩余项目
+                    for item in old_items:
+                        self.tts_queue.put_nowait(item)
+                
+                # 添加新项目
+                self.tts_queue.put_nowait(tts_item)
+                g_logger.warning(f"TTS队列已满，已移除低优先级项目")
+                return True
                     
         except Exception as e:
             g_logger.error(f"添加TTS项目失败: {e}")
@@ -353,7 +330,7 @@ class OptimizedTTSHandler:
         while self.is_running:
             try:
                 if not self._is_tts_enabled():
-                    time.sleep(0.5)
+                    time.sleep(0.1)
                     continue
                 
                 # 从优先队列获取消息
@@ -465,23 +442,37 @@ class OptimizedTTSHandler:
         
         with self._playback_lock:
             try:
-                # 确保音频播放器已初始化
-                if not self.audio_player.initialized:
-                    self.audio_player.initialize()
+                # 检查TTS是否仍然启用
+                if not self._is_tts_enabled():
+                    g_logger.debug("TTS已禁用，跳过播放")
+                    return
                 
                 # 记录当前播放
                 self._current_playing = file_path
                 
                 # 设置音量（从TTS音量设置转换）
-                volume_percent = int(self.volume.replace('+', '').replace('%', '')) / 100
-                self.audio_player.set_volume(volume_percent)
+                try:
+                    volume_str = self.volume.replace('+', '').replace('%', '')
+                    volume_percent = max(0.0, min(1.0, int(volume_str) / 100))
+                    self.audio_player.set_volume(volume_percent)
+                except (ValueError, AttributeError) as e:
+                    g_logger.warning(f"音量设置解析失败，使用默认音量: {e}")
+                    self.audio_player.set_volume(0.8)
+                
+                # 生成缓存键（更唯一）
+                import hashlib
+                content_hash = hashlib.md5(f"{content}_{self.volume}_{self.rate}_{self.voice}".encode('utf-8')).hexdigest()[:12]
+                cache_key = f"tts_{content_hash}"
                 
                 # 预加载音频（如果还没有）
-                cache_key = f"tts_{content[:20]}"
-                self.audio_player.preload_audio(file_path, cache_key)
+                preload_success = self.audio_player.preload_audio(file_path, cache_key)
+                if preload_success:
+                    g_logger.debug(f"音频预加载成功: {content[:20]}...")
+                else:
+                    g_logger.debug(f"音频预加载失败，将直接播放: {content[:20]}...")
                 
-                # 播放音频
-                success = self.audio_player.play_file(file_path, cache_key)
+                # 播放音频（等待播放完成）
+                success = self.audio_player.play_file(file_path, cache_key, wait_for_completion=True)
                 
                 if success:
                     g_logger.debug(f"TTS播放完成: {content[:30]}...")
@@ -498,9 +489,8 @@ class OptimizedTTSHandler:
         """停止当前播放"""
         with self._playback_lock:
             try:
-                if self.audio_player.initialized:
-                    self.audio_player.stop()
-                    g_logger.debug("已停止当前TTS播放")
+                self.audio_player.stop()
+                g_logger.debug("已停止当前TTS播放")
             except Exception as e:
                 g_logger.warning(f"停止播放失败: {e}")
     
@@ -568,42 +558,13 @@ class OptimizedTTSHandler:
             
             return stats
     
-    def preload_audio(self, text: str) -> bool:
-        """预加载音频到缓存"""
-        try:
-            # 检查是否已在缓存中
-            cached_file = self.audio_cache.get(text, self.voice, self.rate, self.volume)
-            if cached_file:
-                return True
-            
-            # 生成音频并添加到缓存
-            tts_item = TTSItem(
-                priority=1,
-                content=text,
-                voice=self.voice,
-                rate=self.rate,
-                volume=self.volume
-            )
-            
-            audio_file = self._generate_audio_sync(tts_item)
-            if audio_file:
-                self.audio_cache.put(text, self.voice, self.rate, self.volume, audio_file)
-                g_logger.debug(f"预加载音频成功: {text[:30]}...")
-                return True
-            
-            return False
-            
-        except Exception as e:
-            g_logger.error(f"预加载音频失败: {e}")
-            return False
     
     def pause(self):
         """暂停TTS播放"""
         with self._playback_lock:
             try:
-                if self.audio_player.initialized:
-                    self.audio_player.pause()
-                    g_logger.info("TTS播放已暂停")
+                self.audio_player.pause()
+                g_logger.info("TTS播放已暂停")
             except Exception as e:
                 g_logger.error(f"暂停TTS播放失败: {e}")
     
@@ -611,9 +572,8 @@ class OptimizedTTSHandler:
         """恢复TTS播放"""
         with self._playback_lock:
             try:
-                if self.audio_player.initialized:
-                    self.audio_player.resume()
-                    g_logger.info("TTS播放已恢复")
+                self.audio_player.resume()
+                g_logger.info("TTS播放已恢复")
             except Exception as e:
                 g_logger.error(f"恢复TTS播放失败: {e}")
     
@@ -625,20 +585,6 @@ class OptimizedTTSHandler:
     def cleanup_temp_files(self):
         """清理临时文件"""
         self.temp_file_manager.cleanup_temp_files()
-    
-    def get_memory_stats(self) -> Dict:
-        """获取内存使用统计"""
-        memory_stats = self.memory_manager.get_cleanup_stats()
-        temp_stats = {
-            'temp_file_count': self.temp_file_manager.get_temp_file_count(),
-            'cache_size': len(self.audio_cache.cache)
-        }
-        
-        return {
-            'memory_manager': memory_stats,
-            'temp_files': temp_stats
-        }
-    
     def update_config(self):
         """更新配置参数"""
         g_logger.info("正在更新优化TTS配置...")
