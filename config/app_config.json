@@ -9,7 +9,10 @@
     "fansclub_tts": true,
     "enter_tts_enabled": false,
     "enter_tts_templates": [
-      "欢迎{user_name}进入直播间"
+      "欢迎{user_name}进入直播间",
+      "欢迎来到直播间{user_name}",
+      "{user_name}进入了直播间"
+
     ],
     "follow_tts_enabled": false,
     "follow_tts_templates": [
