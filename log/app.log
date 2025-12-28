@@ -1,43 +1,94 @@
-2025-12-24 16:39:23,811 - INFO - 日志初始化完成
-2025-12-24 16:39:24,153 - INFO - 正在启动GUI界面...
-2025-12-24 16:43:09,368 - INFO - 日志初始化完成
-2025-12-24 16:44:09,363 - INFO - 日志初始化完成
-2025-12-24 16:44:09,807 - INFO - 正在启动GUI界面...
-2025-12-24 16:52:22,169 - INFO - 日志初始化完成
-2025-12-24 16:52:22,556 - INFO - 正在启动GUI界面...
-2025-12-25 09:59:21,848 - INFO - 日志初始化完成
-2025-12-25 09:59:22,222 - INFO - 正在启动GUI界面...
-2025-12-25 10:00:40,762 - INFO - 日志初始化完成
-2025-12-25 10:00:41,382 - INFO - 正在启动GUI界面...
-2025-12-25 10:05:23,321 - INFO - 日志初始化完成
-2025-12-25 10:05:23,685 - INFO - 正在启动GUI界面...
-2025-12-25 10:08:34,388 - INFO - 日志初始化完成
-2025-12-25 10:08:34,741 - INFO - 正在启动GUI界面...
-2025-12-25 10:31:02,621 - INFO - 日志初始化完成
-2025-12-25 10:31:03,218 - INFO - 正在启动GUI界面...
-2025-12-25 10:31:23,222 - INFO - 日志初始化完成
-2025-12-25 10:31:23,715 - INFO - 正在启动GUI界面...
-2025-12-25 14:50:03,655 - INFO - 日志初始化完成
-2025-12-25 14:51:14,735 - INFO - 日志初始化完成
-2025-12-25 14:51:21,870 - INFO - 日志初始化完成
-2025-12-25 14:51:51,588 - INFO - 日志初始化完成
-2025-12-25 14:53:58,758 - INFO - 日志初始化完成
-2025-12-25 14:53:59,222 - INFO - 正在启动GUI界面...
-2025-12-25 14:55:00,979 - INFO - 日志初始化完成
-2025-12-25 14:55:01,366 - INFO - 正在启动GUI界面...
-2025-12-25 14:59:27,763 - INFO - 日志初始化完成
-2025-12-25 14:59:28,130 - INFO - 正在启动GUI界面...
-2025-12-25 14:59:46,484 - INFO - 日志初始化完成
-2025-12-25 14:59:46,849 - INFO - 正在启动GUI界面...
-2025-12-25 15:00:57,115 - INFO - 日志初始化完成
-2025-12-25 15:00:57,468 - INFO - 正在启动GUI界面...
-2025-12-25 15:03:44,825 - INFO - 日志初始化完成
-2025-12-25 15:03:45,201 - INFO - 正在启动GUI界面...
-2025-12-25 15:07:55,237 - INFO - 日志初始化完成
-2025-12-25 15:07:55,594 - INFO - 正在启动GUI界面...
-2025-12-25 15:07:59,819 - INFO - 开始获取直播间 1 的弹幕
-2025-12-25 15:40:15,269 - INFO - 日志初始化完成
-2025-12-25 15:40:15,752 - INFO - 正在启动GUI界面...
-2025-12-25 16:20:53,069 - INFO - 日志初始化完成
-2025-12-25 16:20:53,473 - INFO - 正在启动GUI界面...
-2025-12-25 16:20:56,182 - INFO - 开始获取直播间 1 的弹幕
+2025-12-29 00:05:47,313 - INFO - 日志初始化完成
+2025-12-29 00:05:51,774 - INFO - TTS处理器已停止
+2025-12-29 00:05:51,774 - INFO - 启动弹幕控制器，房间ID：78134401641
+2025-12-29 00:05:51,776 - INFO - TTS处理器已启动
+2025-12-29 00:06:02,226 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,228 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,230 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,232 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,234 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,236 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,239 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,241 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,243 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,245 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,247 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,249 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,252 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,254 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,257 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,259 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,261 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,263 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,264 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:02,267 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:03,272 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:03,777 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:04,383 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:06,994 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:07,800 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:08,406 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:08,408 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:09,113 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:09,819 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:10,625 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:11,029 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:12,536 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:13,241 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:13,645 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:13,647 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:14,451 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:15,055 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:15,660 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:15,662 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:17,671 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:18,376 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:18,377 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:19,082 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:19,084 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:20,290 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:20,293 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:20,295 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:21,100 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:21,102 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:21,712 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:21,713 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:23,722 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:25,733 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:26,337 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:26,941 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:27,546 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:28,172 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:29,279 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:29,280 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:30,990 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:31,595 - ERROR - TTS生成和播放失败: [Errno 13] Permission denied: 'output/temp_tts.mp3'
+2025-12-29 00:06:35,219 - INFO - WebSocket connection closed.
+2025-12-29 00:06:35,309 - INFO - TTS处理器已停止
+2025-12-29 00:06:36,056 - INFO - TTS处理器已停止
+2025-12-29 00:07:50,816 - INFO - 日志初始化完成
+2025-12-29 00:07:56,726 - INFO - TTS处理器已停止
+2025-12-29 00:07:56,726 - INFO - 启动弹幕控制器，房间ID：78134401641
+2025-12-29 00:07:56,729 - INFO - TTS处理器已启动
+2025-12-29 00:08:17,116 - ERROR - 添加TTS消息失败: 'gbk' codec can't encode character '\U0001f339' in position 21: illegal multibyte sequence
+2025-12-29 00:08:56,701 - INFO - WebSocket connection closed.
+2025-12-29 00:08:58,016 - INFO - TTS处理器已停止
+2025-12-29 00:09:02,974 - INFO - TTS处理器已停止
+2025-12-29 00:09:44,750 - INFO - 日志初始化完成
+2025-12-29 00:09:45,349 - INFO - 正在启动GUI界面...
+2025-12-29 00:10:01,055 - INFO - TTS处理器已停止
+2025-12-29 00:41:34,741 - INFO - 日志初始化完成
+2025-12-29 00:48:33,676 - INFO - 日志初始化完成
+2025-12-29 00:48:33,889 - INFO - Qt音频播放器初始化成功 - 采样率:22050
+2025-12-29 00:48:34,338 - INFO - Qt音频播放器测试程序已启动
+2025-12-29 00:48:39,392 - INFO - Qt音频播放器初始化成功
+2025-12-29 00:48:49,746 - INFO - 显示播放统计信息
+2025-12-29 00:48:51,750 - INFO - 显示播放统计信息
+2025-12-29 00:48:56,892 - INFO - 已清空预加载音频缓存
+2025-12-29 00:48:56,893 - INFO - 音频缓存已清空
+2025-12-29 00:48:58,402 - INFO - Qt音频播放器已关闭
+2025-12-29 00:48:58,402 - INFO - Qt音频播放器测试程序已关闭
+2025-12-29 00:50:32,324 - INFO - 日志初始化完成
+2025-12-29 00:50:32,375 - INFO - Qt音频播放器初始化成功 - 采样率:22050
+2025-12-29 00:51:40,714 - INFO - 日志初始化完成
+2025-12-29 00:52:38,047 - INFO - 日志初始化完成

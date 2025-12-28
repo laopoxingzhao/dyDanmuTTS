@@ -1,12 +1,6 @@
 {
   "tts_settings": {
     "tts_enabled": true,
-    "chat_tts": false,
-    "gift_tts": true,
-    "like_tts": true,
-    "member_tts": false,
-    "social_tts": true,
-    "fansclub_tts": true,
     "enter_tts_enabled": false,
     "enter_tts_templates": [
       "欢迎{user_name}进入直播间"
@@ -35,8 +29,8 @@
       ]
     },
     "volume": 70,
-    "voice": 1,
-    "speed": 8
+    "voice": 0,
+    "speed": 10
   },
   "danmu_settings": {
     "WebcastChatMessage": true,
@@ -45,11 +39,6 @@
     "WebcastMemberMessage": true,
     "WebcastSocialMessage": true,
     "WebcastFansclubMessage": true,
-    "WebcastEmojiChatMessage": true,
-    "WebcastRoomStatsMessage": true,
-    "WebcastRoomUserSeqMessage": true,
-    "WebcastRoomMessage": true,
-    "WebcastRoomRankMessage": true,
-    "WebcastRoomStreamAdaptationMessage": true
+    "WebcastEmojiChatMessage": true
   }
 }

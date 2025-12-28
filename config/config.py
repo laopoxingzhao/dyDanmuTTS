@@ -8,6 +8,13 @@ from dataclasses import dataclass, field, asdict
 class TTSSettings:
     """TTS相关设置"""
     tts_enabled: bool = True
+    # 各种消息类型的TTS开关
+    chat_tts: bool = True
+    gift_tts: bool = True
+    like_tts: bool = True
+    member_tts: bool = True
+    social_tts: bool = True
+    fansclub_tts: bool = True
     enter_tts_enabled: bool = False
     enter_tts_templates: List[str] = field(default_factory=lambda: ["欢迎{user_name}进入直播间"])
     follow_tts_enabled: bool = False
@@ -38,6 +45,11 @@ class DanmuSettings:
     WebcastSocialMessage: bool = True
     WebcastFansclubMessage: bool = True
     WebcastEmojiChatMessage: bool = True
+    WebcastRoomStatsMessage: bool = True
+    WebcastRoomUserSeqMessage: bool = True
+    WebcastRoomMessage: bool = True
+    WebcastRoomRankMessage: bool = True
+    WebcastRoomStreamAdaptationMessage: bool = True
 
 
 class LiveConfig:
@@ -53,6 +65,9 @@ class LiveConfig:
         self.config_file = Path(config_file)
         self.tts_settings = TTSSettings()
         self.danmu_settings = DanmuSettings()
+        
+        # 配置变更回调函数列表
+        self._config_change_callbacks = []
         
         # 加载现有配置或创建默认配置
         self.load()
@@ -76,14 +91,14 @@ class LiveConfig:
                     if hasattr(self.danmu_settings, key):
                         setattr(self.danmu_settings, key, value)
                 
-                print(f"✓ 配置已从 {self.config_file} 加载")
+                print(f"配置已从 {self.config_file} 加载")
                 return True
             else:
-                print(f"⚠ 配置文件不存在，使用默认配置")
+                print(f"配置文件不存在，使用默认配置")
                 self.save()  # 保存默认配置
                 return True
         except Exception as e:
-            print(f"✗ 加载配置失败: {e}")
+            print(f"加载配置失败: {e}")
             return False
     
     def save(self) -> bool:
@@ -101,36 +116,48 @@ class LiveConfig:
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(config_data, f, ensure_ascii=False, indent=2)
             
-            print(f"✓ 配置已保存到 {self.config_file}")
+            print(f"配置已保存到 {self.config_file}")
             return True
         except Exception as e:
-            print(f"✗ 保存配置失败: {e}")
+            print(f"保存配置失败: {e}")
             return False
     
     def update_tts_setting(self, key: str, value) -> bool:
         """更新TTS设置并自动保存"""
         if hasattr(self.tts_settings, key):
             setattr(self.tts_settings, key, value)
-            return self.save()
+            success = self.save()
+            if success:
+                self._notify_config_change('tts', key, value)
+            return success
         return False
     
     def update_danmu_setting(self, key: str, value) -> bool:
         """更新弹幕设置并自动保存"""
         if hasattr(self.danmu_settings, key):
             setattr(self.danmu_settings, key, value)
-            return self.save()
+            success = self.save()
+            if success:
+                self._notify_config_change('danmu', key, value)
+            return success
         return False
     
     def add_keyword_reply(self, keyword: str, replies: List[str]) -> bool:
         """添加关键词回复并自动保存"""
         self.tts_settings.keyword_reply_templates[keyword] = replies
-        return self.save()
+        success = self.save()
+        if success:
+            self._notify_config_change('tts', 'keyword_reply_templates', self.tts_settings.keyword_reply_templates)
+        return success
     
     def remove_keyword(self, keyword: str) -> bool:
         """移除关键词回复并自动保存"""
         if keyword in self.tts_settings.keyword_reply_templates:
             del self.tts_settings.keyword_reply_templates[keyword]
-            return self.save()
+            success = self.save()
+            if success:
+                self._notify_config_change('tts', 'keyword_reply_templates', self.tts_settings.keyword_reply_templates)
+            return success
         return False
     
     def to_dict(self) -> dict:
@@ -140,6 +167,27 @@ class LiveConfig:
             "danmu_settings": asdict(self.danmu_settings)
         }
     
+    def add_config_change_callback(self, callback):
+        """添加配置变更回调函数"""
+        if callback not in self._config_change_callbacks:
+            self._config_change_callbacks.append(callback)
+            
+    def remove_config_change_callback(self, callback):
+        """移除配置变更回调函数"""
+        if callback in self._config_change_callbacks:
+            self._config_change_callbacks.remove(callback)
+            
+    def _notify_config_change(self, config_type: str, key: str, value):
+        """通知配置变更"""
+        try:
+            for callback in self._config_change_callbacks:
+                try:
+                    callback(config_type, key, value)
+                except Exception as e:
+                    print(f"配置变更回调执行失败: {e}")
+        except Exception as e:
+            print(f"通知配置变更失败: {e}")
+            
     def __str__(self) -> str:
         """转换为可读字符串"""
         return json.dumps(self.to_dict(), ensure_ascii=False, indent=2)
