@@ -46,20 +46,10 @@ class MemoryManager:
         
         # 文件类型清理策略
         self.cleanup_strategies = {
-            'temp_tts': {
-                'pattern': 'output/temp_tts_*.mp3',
-                'max_age': 300,  # 5分钟
-                'max_count': 50
-            },
             'temp_general': {
-                'pattern': 'output/temp_*.mp3',
+                'pattern': 'output/temp_*',
                 'max_age': 600,  # 10分钟
                 'max_count': 100
-            },
-            'cache_audio': {
-                'pattern': 'output/cache/*.mp3',
-                'max_age': 3600,  # 1小时
-                'max_count': 200
             },
             'log_files': {
                 'pattern': 'log/*.log',

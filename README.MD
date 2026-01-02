@@ -1,38 +1,43 @@
-# dyDanmuTTS - 抖音直播弹幕TTS语音合成系统
+# dyDanmuTTS - 抖音直播弹幕监控系统
 
-一个功能强大的抖音直播弹幕TTS（文本转语音）系统，支持实时弹幕语音播报、多种语音选择、智能配置管理等高级功能。
+一个功能强大的抖音直播弹幕监控系统，支持实时弹幕捕获、消息类型过滤、可视化配置管理等高级功能。
 
 ## 🎯 功能特性
 
-### 🎵 核心功能
-- **实时弹幕TTS**：将抖音直播间弹幕实时转换为语音播放
-- **多种语音支持**：支持中文、粤语、英文的男女声共6种高质量语音
-- **智能配置管理**：可视化配置界面，支持实时参数调整
-- **高性能播放**：优化的音频播放器，支持播放间隔控制和状态监控
-- **缓存机制**：智能音频缓存，提高重复内容的播放效率
+### 📊 核心功能
+- **实时弹幕监控**：实时捕获和显示抖音直播间弹幕
+- **多种消息类型**：支持聊天、礼物、点赞、进入、关注等多种消息类型
+- **智能过滤**：按消息类型进行筛选，只显示感兴趣的内容
+- **高性能捕获**：优化的弹幕捕获和显示机制
+- **可视化配置**：友好的图形界面，支持实时参数调整
 
-### 🎤 语音选项
-| 索引 | 语音名称 | 语言 | 性别 | Edge TTS名称 |
-|------|----------|------|------|-------------|
-| 0 | 晓晓 | 中文 | 女声 | zh-CN-XiaoxiaoNeural |
-| 1 | 云希 | 中文 | 男声 | zh-CN-YunxiNeural |
-| 2 | 曉儀 | 粤语 | 女声 | zh-HK-HiuGaaiNeural |
-| 3 | 曉文 | 粤语 | 男声 | zh-HK-HiuMaanNeural |
-| 4 | Jenny | 英文 | 女声 | en-US-JennyNeural |
-| 5 | Guy | 英文 | 男声 | en-US-GuyNeural |
+### 📋 消息类型支持
+- **聊天消息** (WebcastChatMessage)：用户发送的弹幕内容
+- **礼物消息** (WebcastGiftMessage)：用户送出的礼物信息
+- **点赞消息** (WebcastLikeMessage)：用户的点赞行为
+- **成员消息** (WebcastMemberMessage)：用户进入直播间
+- **社交消息** (WebcastSocialMessage)：用户关注主播
+
+### 🎙️ 事件播报功能
+- **进入直播间播报**：欢迎新用户进入直播间
+- **送礼播报**：播报用户送礼信息
+- **关注播报**：感谢新关注用户
+- **点赞播报**：播报点赞信息（可选）
+- **自定义模板**：支持多种播报模板，随机选择
+- **冷却控制**：防止播报过于频繁
 
 ### ⚙️ 配置选项
-- **音量控制**：0-100范围，自动转换为Edge TTS音量参数
-- **语速调节**：0-20范围，支持-100%到+100%的语速调整
-- **消息类型过滤**：可选择播报的消息类型（聊天、礼物、点赞等）
-- **自定义模板**：支持进入房间、关注、礼物等事件的播报模板
+- **消息类型过滤**：可选择显示的消息类型
+- **队列大小**：控制弹幕队列的最大长度
+- **去重窗口**：设置消息去重的时间窗口
+- **智能过滤**：启用智能去重和过滤功能
+- **优先级处理**：按消息类型进行优先级排序
 
 ## 🚀 快速开始
 
 ### 环境要求
 - Python 3.8+
 - PyQt5
-- edge-tts
 - 其他依赖见 requirements.txt
 
 ### 安装依赖
@@ -47,15 +52,15 @@ pip install -r requirements.txt
 python optimized_main.py
 ```
 
-2. **配置TTS设置**
-- 在配置界面选择语音类型
-- 调整音量和语速
-- 选择要播报的消息类型
+2. **配置监控设置**
+- 选择要显示的消息类型
+- 调整队列大小和去重参数
+- 启用智能过滤和优先级处理
 
-3. **开始直播弹幕TTS**
+3. **开始监控弹幕**
 - 输入抖音直播间房间号
-- 点击开始连接
-- 系统将自动播报弹幕内容
+- 点击连接直播间
+- 系统将自动显示弹幕内容
 
 ## 📁 项目结构
 
@@ -70,25 +75,13 @@ dyDanmuTTS/
 │   ├── liveMan.py         # 直播间管理
 │   ├── ac_signature.py     # 签名算法
 │   └── protobuf/          # 协议解析
-├── tts/                   # TTS语音合成模块
-│   ├── optimized_tts_handler.py  # 优化的TTS处理器
-│   └── tts_builder.py     # TTS构建器
 ├── tool/                  # 工具模块
-│   ├── qt_audio_player.py  # Qt音频播放器
-│   ├── memory_manager.py   # 内存管理器
-│   └── optimized_queue.py  # 优化队列
+│   └── memory_manager.py   # 内存管理器
 ├── ui/                    # 用户界面模块
 │   ├── optimized_danmu_ui.py      # 弹幕UI
-│   ├── tts_config_ui.py           # TTS配置UI
-│   └── performance_monitor_ui.py  # 性能监控UI
-├── tests/                 # 测试模块
-│   ├── direct_tts_demo.py         # 直接TTS演示
-│   ├── test_audio_player.py       # 音频播放器测试
-│   ├── test_tts_generation.py     # TTS生成测试
-│   └── test_voice_config.py       # 语音配置测试
+│   ├── optimized_danmu_controller.py  # 弹幕控制器
+│   └── room_input_ui.py             # 房间输入UI
 ├── output/                # 输出目录
-│   ├── cache/            # 音频缓存
-│   └── temp/             # 临时文件
 ├── log/                  # 日志目录
 ├── optimized_main.py     # 优化的主程序
 └── README.MD            # 项目文档
@@ -100,132 +93,203 @@ dyDanmuTTS/
 
 ```json
 {
-  "tts_settings": {
-    "tts_enabled": true,           // 是否启用TTS
-    "chat_tts": true,              // 聊天消息TTS
-    "gift_tts": true,              // 礼物消息TTS
-    "like_tts": true,              // 点赞消息TTS
-    "voice": 1,                    // 语音选择 (0-5)
-    "volume": 67,                  // 音量 (0-100)
-    "speed": 8                     // 语速 (0-20)
-  },
   "danmu_settings": {
     "WebcastChatMessage": true,    // 聊天消息
     "WebcastGiftMessage": true,    // 礼物消息
     "WebcastLikeMessage": true,    // 点赞消息
     "WebcastMemberMessage": true,  // 成员消息
     "WebcastSocialMessage": true   // 社交消息
+  },
+  "tts_settings": {
+    "enabled": true,
+    "event_announcement": {
+      "member_enter": {
+        "enabled": true,
+        "cooldown": 30,
+        "priority": 5,
+        "user_cooldown": true,
+        "templates": [
+          "欢迎 {user_name} 进入直播间",
+          "{user_name} 来了，欢迎欢迎",
+          "欢迎 {user_name} 来到直播间"
+        ]
+      },
+      "gift_send": {
+        "enabled": true,
+        "cooldown": 5,
+        "priority": 7,
+        "enable_cooldown": false,
+        "min_gift_count": 1,
+        "templates": [
+          "感谢 {user_name} 送出的 {gift_name} {gift_count} 个",
+          "感谢 {user_name} 的 {gift_name} x{gift_count}",
+          "{user_name} 送了 {gift_name} {gift_count} 个，感谢支持"
+        ]
+      },
+      "social_follow": {
+        "enabled": true,
+        "cooldown": 60,
+        "priority": 6,
+        "user_cooldown": true,
+        "templates": [
+          "感谢 {user_name} 的关注",
+          "欢迎 {user_name} 关注主播",
+          "{user_name} 关注了，感谢支持"
+        ]
+      },
+      "like": {
+        "enabled": false,
+        "cooldown": 10,
+        "priority": 4,
+        "enable_cooldown": true,
+        "min_like_count": 10,
+        "templates": [
+          "{user_name} 点了 {count} 个赞",
+          "感谢 {user_name} 的 {count} 个赞"
+        ]
+      }
+    }
   }
 }
 ```
 
-### 参数转换规则
+### 配置参数说明
 
-**音量转换**：
-- 配置值：0-100
-- Edge TTS：-50% 到 +50%
-- 50 = +0% (默认音量)
-- 67 = +17% (示例配置)
+**消息类型设置**：
+- `WebcastChatMessage`：是否显示聊天消息
+- `WebcastGiftMessage`：是否显示礼物消息
+- `WebcastLikeMessage`：是否显示点赞消息
+- `WebcastMemberMessage`：是否显示成员进入消息
+- `WebcastSocialMessage`：是否显示关注消息
 
-**语速转换**：
-- 配置值：0-20
-- Edge TTS：-100% 到 +100%
-- 10 = +0% (默认语速)
-- 8 = -20% (示例配置)
+**事件播报设置**：
 
-## 🧪 测试工具
+1. **进入直播间播报 (member_enter)**
+   - `enabled`：是否启用进入播报
+   - `cooldown`：播报冷却时间（秒）
+   - `priority`：播报优先级（0-10，越高越优先）
+   - `user_cooldown`：是否启用用户级冷却（同一用户冷却）
+   - `templates`：播报模板列表（支持变量：{user_name}, {gender}, {time}）
 
-项目提供了完整的测试工具套件，位于 `tests/` 目录：
+2. **送礼播报 (gift_send)**
+   - `enabled`：是否启用送礼播报
+   - `cooldown`：播报冷却时间（秒）
+   - `priority`：播报优先级
+   - `enable_cooldown`：是否启用冷却
+   - `min_gift_count`：最小礼物数量阈值
+   - `templates`：播报模板列表（支持变量：{user_name}, {gift_name}, {gift_count}, {time}）
 
-### 1. TTS生成测试
-```bash
-# 测试当前配置的TTS生成
-python tests/direct_tts_demo.py demo
+3. **关注播报 (social_follow)**
+   - `enabled`：是否启用关注播报
+   - `cooldown`：播报冷却时间（秒）
+   - `priority`：播报优先级
+   - `user_cooldown`：是否启用用户级冷却
+   - `templates`：播报模板列表（支持变量：{user_name}, {time}）
 
-# 查看所有语音选项
-python tests/direct_tts_demo.py info
+4. **点赞播报 (like)**
+   - `enabled`：是否启用点赞播报（默认关闭）
+   - `cooldown`：播报冷却时间（秒）
+   - `priority`：播报优先级
+   - `enable_cooldown`：是否启用冷却
+   - `min_like_count`：最小点赞数量阈值
+   - `templates`：播报模板列表（支持变量：{user_name}, {count}, {time}）
 
-# 对比不同语音效果
-python tests/direct_tts_demo.py compare
-```
+### 事件播报使用示例
 
-### 2. 音频播放器测试
-```bash
-# 测试音频播放器功能
-python tests/test_audio_player.py
-```
+1. **启用进入直播间播报**
+   - 在配置文件中设置 `"member_enter.enabled": true`
+   - 自定义播报模板，例如："欢迎 {user_name} 进入直播间"
+   - 设置冷却时间，避免频繁播报（建议30秒）
 
-### 3. TTS配置测试
-```bash
-# 测试不同语音配置
-python tests/test_voice_config.py
-```
+2. **配置送礼播报**
+   - 设置 `"gift_send.enabled": true`
+   - 设置最小礼物数量阈值，例如只播报1个以上的礼物
+   - 可以关闭用户冷却，确保每次送礼都播报
+   - 设置较高的优先级（如7），确保送礼消息优先播放
 
-### 4. 快速测试
-```bash
-# 快速功能测试
-python tests/quick_test.py
-```
+3. **感谢关注用户**
+   - 启用 `"social_follow.enabled": true`
+   - 设置较长的冷却时间（如60秒），避免重复感谢
+   - 使用多种模板增加变化
 
-## 📊 性能优化
+4. **播报模板变量说明**
+   - `{user_name}`：用户昵称
+   - `{gender}`：用户性别（男/女/未知）
+   - `{gift_name}`：礼物名称
+   - `{gift_count}`：礼物数量
+   - `{count}`：点赞数量
+   - `{time}`：当前时间
 
-### 播放器优化
-- **智能等待机制**：从CPU密集型忙等待改为事件等待
-- **播放间隔控制**：防止音频重叠，默认最小间隔0.5秒
-- **状态监控**：实时跟踪播放状态和性能指标
-- **错误恢复**：完善的异常处理和自动恢复机制
+5. **播报优先级建议**
+   - 送礼消息：7-10（最高优先级）
+   - 关注消息：6-8（高优先级）
+   - 进入消息：4-6（中等优先级）
+   - 点赞消息：3-5（低优先级）
 
-### 缓存机制
-- **音频缓存**：重复内容直接使用缓存，提高响应速度
-- **智能清理**：自动清理过期缓存，控制存储空间
-- **命中率统计**：实时监控缓存效率
+## 📊 界面说明
 
-### 内存管理
-- **队列优化**：高效的TTS任务队列管理
-- **资源释放**：及时释放音频资源和内存
-- **性能监控**：实时监控内存使用情况
+### 主界面
+- **直播间ID输入**：输入要监控的抖音直播间ID
+- **连接/断开按钮**：控制与直播间的连接状态
+- **性能状态**：显示当前系统性能状态
+
+### 弹幕监控标签页
+- **消息类型筛选**：左侧面板，勾选要显示的消息类型
+- **快速过滤设置**：
+  - 启用智能过滤：智能去重重复消息
+  - 启用优先级处理：按消息类型排序
+- **队列设置**：
+  - 队列大小：控制弹幕列表最大长度（5-100）
+  - 去重窗口：消息去重时间窗口（5-300秒）
+- **弹幕列表**：右侧面板，实时显示弹幕内容
+- **统计信息**：显示总计和过滤的消息数量
+
+### 高级设置标签页
+- **系统统计**：
+  - 运行时间
+  - 总消息数
+  - 过滤消息数
+  - 消息速率
 
 ## 🔧 高级功能
 
-### 自定义播报模板
+### 智能过滤
+系统提供智能过滤功能，可以：
+- 自动去重相似消息
+- 按时间窗口过滤重复内容
+- 提高消息显示质量
 
-支持为不同事件设置自定义播报模板：
+### 优先级处理
+支持按消息类型进行优先级排序：
+- 聊天消息：中等优先级
+- 礼物消息：高优先级
+- 关注消息：高优先级
+- 进入消息：低优先级
+- 点赞消息：低优先级
 
-```json
-{
-  "enter_tts_templates": ["欢迎{user_name}进入直播间"],
-  "follow_tts_templates": ["感谢{user_name}的关注"],
-  "gift_tts_templates": ["感谢{user_name}送出的{gift_name}"],
-  "keyword_reply_templates": {
-    "1": ["你好啊{user_name}", "欢迎来到直播间{user_name}"],
-    "问题": ["这是一个好问题", "让我想想怎么回答{user_name}"]
-  }
-}
-```
-
-### 关键词回复
-- 设置特定关键词的自动回复
-- 支持变量替换（用户名、礼物名等）
-- 可配置多条回复随机选择
+### 队列管理
+- 控制弹幕列表的最大长度
+- 自动清理旧消息
+- 保持界面流畅
 
 ## 🐛 故障排除
 
 ### 常见问题
 
-1. **TTS无法播放**
+1. **无法连接直播间**
    - 检查网络连接
-   - 确认edge-tts库正常安装
+   - 确认直播间ID正确
    - 查看日志文件获取详细错误信息
 
-2. **音频质量问题**
-   - 调整音量参数（建议50-80）
-   - 检查语速设置（建议8-12）
-   - 尝试不同的语音选项
+2. **弹幕显示延迟**
+   - 检查网络速度
+   - 调整队列大小
+   - 启用智能过滤
 
 3. **性能问题**
-   - 启用音频缓存
-   - 调整播放间隔
-   - 关闭不必要的消息类型TTS
+   - 减少显示的消息类型
+   - 调整队列大小
+   - 启用智能过滤
 
 4. **配置不生效**
    - 检查配置文件格式
@@ -235,18 +299,22 @@ python tests/quick_test.py
 ### 日志查看
 日志文件位于 `log/app.log`，包含详细的运行信息和错误记录。
 
-## 📈 性能指标
+## 📈 性能优化
 
-### 测试结果
-- **音频生成速度**：平均1.8-2.5秒/条
-- **文件大小**：10-40KB/条（取决于内容长度）
-- **缓存命中率**：重复内容可达90%+
-- **播放延迟**：<100ms（缓存命中时）
+### 显示优化
+- **智能滚动**：自动滚动到最新消息
+- **列表限制**：控制最大显示条数
+- **颜色区分**：不同消息类型使用不同颜色
 
-### 系统要求
-- **内存**：建议512MB+
-- **网络**：稳定的互联网连接（用于TTS服务）
-- **存储**：建议1GB+（用于音频缓存）
+### 过滤优化
+- **类型过滤**：快速过滤不需要的消息类型
+- **智能去重**：自动过滤重复内容
+- **优先级排序**：重要消息优先显示
+
+### 内存优化
+- **队列管理**：高效的弹幕队列管理
+- **自动清理**：及时清理过期消息
+- **性能监控**：实时监控系统性能
 
 ## 🤝 贡献指南
 
@@ -255,8 +323,8 @@ python tests/quick_test.py
 ### 开发环境设置
 1. 克隆项目
 2. 安装依赖：`pip install -r requirements.txt`
-3. 运行测试：`python tests/quick_test.py`
-4. 提交代码前确保所有测试通过
+3. 运行程序：`python optimized_main.py`
+4. 提交代码前确保功能正常
 
 ## 📄 许可证
 
@@ -264,7 +332,6 @@ python tests/quick_test.py
 
 ## 🙏 致谢
 
-- [edge-tts](https://github.com/rany2/edge-tts) - 微软Edge TTS接口
 - [PyQt5](https://www.riverbankcomputing.com/software/pyqt/) - GUI框架
 - [protobuf](https://developers.google.com/protocol-buffers) - 协议解析
 

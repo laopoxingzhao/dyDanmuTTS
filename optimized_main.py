@@ -5,12 +5,8 @@
 优化版抖音直播弹幕抓取工具主入口
 
 本版本集成了以下优化功能:
-1. 智能TTS队列管理和优先级处理
-2. 音频缓存机制避免重复生成
-3. 异步音频生成和播放
-4. 智能消息去重和过滤
-5. 性能监控和统计
-6. 优化的内存使用和临时文件管理
+1. 智能消息去重和过滤
+2. 性能监控和统计
 """
 
 import sys
@@ -59,7 +55,6 @@ def run_command_line_mode(live_id):
             stats = controller.get_performance_stats()
             if stats['total_messages'] % 10 == 0:  # 每10条消息打印一次
                 g_logger.info(f"统计: 总消息={stats['total_messages']}, "
-                            f"TTS={stats['tts_messages']}, "
                             f"过滤={stats['filtered_messages']}, "
                             f"速率={stats['messages_per_second']:.1f} msg/s")
     

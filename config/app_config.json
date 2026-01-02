@@ -1,46 +1,4 @@
 {
-  "tts_settings": {
-    "tts_enabled": true,
-    "chat_tts": true,
-    "gift_tts": true,
-    "like_tts": true,
-    "member_tts": true,
-    "social_tts": true,
-    "fansclub_tts": true,
-    "enter_tts_enabled": false,
-    "enter_tts_templates": [
-      "欢迎{user_name}进入直播间",
-      "欢迎来到直播间{user_name}",
-      "{user_name}进入了直播间"
-
-    ],
-    "follow_tts_enabled": false,
-    "follow_tts_templates": [
-      "感谢{user_name}的关注"
-    ],
-    "gift_tts_enabled": false,
-    "gift_tts_templates": [
-      "感谢{user_name}送出的{gift_name}",
-      "{user_name}送出了礼物，感谢支持"
-    ],
-    "keyword_tts_enabled": false,
-    "keyword_reply_templates": {
-      "1": [
-        "你好啊{user_name}",
-        "欢迎来到直播间{user_name}"
-      ],
-      "问题": [
-        "这是一个好问题",
-        "让我想想怎么回答{user_name}"
-      ],
-      "帮助": [
-        "有什么可以帮助你的吗"
-      ]
-    },
-    "volume": 67,
-    "voice": 1,
-    "speed": 8
-  },
   "danmu_settings": {
     "WebcastChatMessage": true,
     "WebcastGiftMessage": true,
@@ -54,5 +12,84 @@
     "WebcastRoomMessage": true,
     "WebcastRoomRankMessage": true,
     "WebcastRoomStreamAdaptationMessage": true
+  },
+  "tts_settings": {
+    "enabled": true,
+    "voice": "晓晓",
+    "rate": "+57%",
+    "volume": "-36%",
+    "playback_volume": 40,
+    "play_interval": 0.5,
+    "max_queue_size": 30,
+    "cache_dir": "output/cache",
+    "cache_max_age": 86396,
+    "cache_max_size_mb": 500,
+    "enable_cache": true,
+    "event_announcement": {
+      "member_enter": {
+        "enabled": true,
+        "cooldown": 30,
+        "priority": 5,
+        "user_cooldown": true,
+        "templates": [
+          "欢迎 {user_name} 进入直播间",
+          "{user_name} 来了，欢迎欢迎",
+          "欢迎 {user_name} 来到直播间"
+        ]
+      },
+      "gift_send": {
+        "enabled": true,
+        "cooldown": 5,
+        "priority": 7,
+        "enable_cooldown": true,
+        "min_gift_count": 1,
+        "templates": [
+          "感谢{user_name}送礼"
+        ]
+      },
+      "social_follow": {
+        "enabled": true,
+        "cooldown": 60,
+        "priority": 6,
+        "user_cooldown": true,
+        "templates": [
+          "感谢关注"
+        ]
+      },
+      "like": {
+        "enabled": true,
+        "cooldown": 10,
+        "priority": 4,
+        "enable_cooldown": true,
+        "min_like_count": 10,
+        "templates": [
+          "感谢{user_name}点赞"
+        ]
+      }
+    },
+    "keyword_rules": {
+      "欢迎": {
+        "keyword": "欢迎",
+        "match_type": "contain",
+        "replies": [
+          "欢迎 {user_name} 进入直播间"
+        ],
+        "priority": 2,
+        "cooldown": 30,
+        "reply_mode": "queue",
+        "reply_probability": 1.0
+      },
+      "谢谢": {
+        "keyword": "谢谢",
+        "match_type": "contain",
+        "replies": [
+          "谢谢 {user_name} 的支持"
+        ],
+        "priority": 1,
+        "cooldown": 10,
+        "reply_mode": "queue",
+        "reply_probability": 0.8
+      }
+    }
   }
 }

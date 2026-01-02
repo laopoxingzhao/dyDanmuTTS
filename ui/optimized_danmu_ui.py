@@ -8,8 +8,8 @@ import sys
 from datetime import datetime
 from config.config import config_manager
 from ui.optimized_danmu_controller import OptimizedDanmuController, checkbox_labels
-from ui.tts_config_ui import TTSConfigPanel
-from ui.performance_monitor_ui import PerformanceMonitor
+from ui.tts_config_ui import TTSConfigUI
+from ui.keyword_ui import KeywordManagerUI
 from config.log import g_logger
 
 
@@ -20,7 +20,6 @@ class OptimizedRoom(QWidget):
         super().__init__()
         self.danmu_controller = None
         self.config_manager = config_manager
-        self.performance_monitor = None
         
         self.init_ui()
         self.show()
@@ -57,12 +56,22 @@ class OptimizedRoom(QWidget):
         self.tab_widget.addTab(monitor_widget, "弹幕监控")
         
         # TTS配置标签页
-        self.tts_config_panel = TTSConfigPanel()
-        self.tab_widget.addTab(self.tts_config_panel, "TTS配置")
+        tts_config_widget = QWidget()
+        tts_config_layout = QVBoxLayout()
+        self.tts_config_panel = TTSConfigUI(config_manager)
+        # 连接配置变更信号到更新方法
+        self.tts_config_panel.config_changed.connect(self.on_tts_config_changed)
+        tts_config_layout.addWidget(self.tts_config_panel)
+        tts_config_widget.setLayout(tts_config_layout)
+        self.tab_widget.addTab(tts_config_widget, "TTS配置")
         
-        # 性能监控标签页
-        self.performance_monitor = PerformanceMonitor()
-        self.tab_widget.addTab(self.performance_monitor, "性能监控")
+        # 关键词管理标签页
+        keyword_widget = QWidget()
+        keyword_layout = QVBoxLayout()
+        self.keyword_panel = KeywordManagerUI(config_manager)
+        keyword_layout.addWidget(self.keyword_panel)
+        keyword_widget.setLayout(keyword_layout)
+        self.tab_widget.addTab(keyword_widget, "关键词管理")
         
         # 高级设置标签页
         advanced_widget = self.create_advanced_tab()
@@ -80,10 +89,6 @@ class OptimizedRoom(QWidget):
         self.update_timer.timeout.connect(self.update_danmu_list)
         self.update_timer.start(100)  # 每100ms更新一次
         
-        # 启动性能监控定时器
-        self.performance_timer = QTimer()
-        self.performance_timer.timeout.connect(self.update_performance_info)
-        self.performance_timer.start(2000)  # 每2秒更新一次性能信息
         
     def create_control_panel(self, parent_layout):
         """创建顶部控制面板"""
@@ -126,51 +131,19 @@ class OptimizedRoom(QWidget):
             }
         """)
         
-        # 快速操作按钮
-        self.quick_pause_btn = QPushButton("快速暂停")
-        self.quick_pause_btn.clicked.connect(self.quick_pause_tts)
-        self.quick_pause_btn.setFixedHeight(35)
-        self.quick_pause_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #FF9800;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #F57C00;
-            }
-        """)
-        
-        self.clear_cache_btn = QPushButton("清空缓存")
-        self.clear_cache_btn.clicked.connect(self.quick_clear_cache)
-        self.clear_cache_btn.setFixedHeight(35)
-        self.clear_cache_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #f44336;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #da190b;
-            }
-        """)
-        
         # 性能状态显示
         self.performance_label = QLabel("性能: 正常")
         self.performance_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-size: 12px;")
         
+        # TTS状态显示
+        self.tts_status_label = QLabel("TTS: 未启用")
+        self.tts_status_label.setStyleSheet("color: #9E9E9E; font-weight: bold; font-size: 12px;")
+        
         control_layout.addWidget(QLabel("直播间ID:"))
         control_layout.addWidget(self.room_id_input)
         control_layout.addWidget(self.connect_btn)
-        control_layout.addWidget(self.quick_pause_btn)
-        control_layout.addWidget(self.clear_cache_btn)
         control_layout.addStretch()
+        control_layout.addWidget(self.tts_status_label)
         control_layout.addWidget(self.performance_label)
         
         control_frame.setLayout(control_layout)
@@ -267,13 +240,11 @@ class OptimizedRoom(QWidget):
         danmu_title.setFont(QFont("Arial", 12, QFont.Bold))
         
         self.danmu_count_label = QLabel("总计: 0 条")
-        self.tts_count_label = QLabel("TTS: 0 条")
         self.filter_count_label = QLabel("过滤: 0 条")
         
         header_layout.addWidget(danmu_title)
         header_layout.addStretch()
         header_layout.addWidget(self.danmu_count_label)
-        header_layout.addWidget(self.tts_count_label)
         header_layout.addWidget(self.filter_count_label)
         danmu_layout.addLayout(header_layout)
         
@@ -309,16 +280,12 @@ class OptimizedRoom(QWidget):
         self.status_label.setStyleSheet("color: #f44336; font-weight: bold;")
         
         self.received_count_label = QLabel("已接收: 0 条")
-        self.tts_success_label = QLabel("TTS成功率: 0%")
-        self.cache_hit_label = QLabel("缓存命中率: 0%")
-        self.queue_size_label = QLabel("队列: 0")
+        self.tts_count_label = QLabel("TTS: 0 条")
         
         status_layout.addWidget(self.status_label)
         status_layout.addStretch()
+        status_layout.addWidget(self.tts_count_label)
         status_layout.addWidget(self.received_count_label)
-        status_layout.addWidget(self.tts_success_label)
-        status_layout.addWidget(self.cache_hit_label)
-        status_layout.addWidget(self.queue_size_label)
         
         status_frame.setLayout(status_layout)
         parent_layout.addWidget(status_frame)
@@ -327,46 +294,6 @@ class OptimizedRoom(QWidget):
         """创建高级设置标签页"""
         widget = QWidget()
         layout = QVBoxLayout()
-        
-        # 性能优化设置
-        perf_group = QGroupBox("性能优化设置")
-        perf_layout = QGridLayout()
-        
-        self.enable_cache_cb = QCheckBox("启用音频缓存")
-        self.enable_cache_cb.setChecked(True)
-        perf_layout.addWidget(self.enable_cache_cb, 0, 0)
-        
-        self.enable_async_cb = QCheckBox("启用异步处理")
-        self.enable_async_cb.setChecked(True)
-        perf_layout.addWidget(self.enable_async_cb, 0, 1)
-        
-        self.enable_preload_cb = QCheckBox("启用预加载")
-        self.enable_preload_cb.setChecked(True)
-        perf_layout.addWidget(self.enable_preload_cb, 1, 0)
-        
-        self.max_cache_spin = QSpinBox()
-        self.max_cache_spin.setRange(10, 200)
-        self.max_cache_spin.setValue(50)
-        perf_layout.addWidget(QLabel("最大缓存数:"), 1, 1)
-        perf_layout.addWidget(self.max_cache_spin, 1, 2)
-        
-        perf_group.setLayout(perf_layout)
-        layout.addWidget(perf_group)
-        
-        # 测试区域
-        test_group = QGroupBox("测试功能")
-        test_layout = QHBoxLayout()
-        
-        self.test_message_input = QLineEdit()
-        self.test_message_input.setPlaceholderText("输入测试消息...")
-        test_layout.addWidget(self.test_message_input)
-        
-        self.test_btn = QPushButton("测试TTS")
-        self.test_btn.clicked.connect(self.test_tts)
-        test_layout.addWidget(self.test_btn)
-        
-        test_group.setLayout(test_layout)
-        layout.addWidget(test_group)
         
         # 统计信息
         stats_group = QGroupBox("系统统计")
@@ -385,16 +312,26 @@ class OptimizedRoom(QWidget):
         
         return widget
     
+    def quick_pause_tts(self):
+        """快速暂停TTS"""
+        if self.danmu_controller and self.danmu_controller.tts_controller:
+            self.danmu_controller.tts_controller.toggle_pause()
+    
+    def quick_clear_cache(self):
+        """快速清空TTS缓存"""
+        if self.danmu_controller and self.danmu_controller.tts_controller:
+            self.danmu_controller.tts_controller.clear_cache()
+    
+    def test_tts(self):
+        """测试TTS功能"""
+        if self.danmu_controller and self.danmu_controller.tts_controller:
+            self.danmu_controller.tts_controller.test_tts("这是一条测试语音")
+    
     def init_optimized_danmu_controller(self):
         """初始化优化的弹幕控制器"""
         self.danmu_controller = OptimizedDanmuController()
         self.total_received = 0
-        self.total_tts = 0
         self.total_filtered = 0
-        
-        # 设置性能监控器的弹幕控制器引用
-        if self.performance_monitor:
-            self.performance_monitor.set_danmu_controller(self.danmu_controller)
         
         # 从配置文件加载筛选状态
         self.load_filter_settings()
@@ -470,78 +407,35 @@ class OptimizedRoom(QWidget):
         self.config_manager.update_danmu_setting(msg_type, is_checked)
         
     def on_smart_filter_changed(self, state):
-        """智能过滤设置变更"""
-        is_enabled = state == Qt.Checked
-        if self.danmu_controller and self.danmu_controller.tts_queue:
-            self.danmu_controller.tts_queue.enable_smart_filter = is_enabled
-            g_logger.info(f"智能过滤已{'启用' if is_enabled else '禁用'}")
+        """智能过滤设置变更（已移除TTS功能）"""
+        pass
     
     def on_priority_changed(self, state):
-        """优先级处理设置变更"""
-        is_enabled = state == Qt.Checked
-        # 这里可以添加优先级处理的启用/禁用逻辑
-        g_logger.info(f"优先级处理已{'启用' if is_enabled else '禁用'}")
+        """优先级处理设置变更（已移除TTS功能）"""
+        pass
     
     def on_queue_size_changed(self, value):
-        """队列大小变更"""
-        if self.danmu_controller and self.danmu_controller.tts_queue:
-            self.danmu_controller.tts_queue.max_queue_size = value
-            g_logger.info(f"队列大小已更新为: {value}")
+        """队列大小变更（已移除TTS功能）"""
+        pass
     
     def on_dedup_window_changed(self, value):
-        """去重窗口变更"""
-        if self.danmu_controller and self.danmu_controller.tts_queue:
-            if self.danmu_controller.tts_queue.deduplicator:
-                self.danmu_controller.tts_queue.deduplicator.time_window = value
-            g_logger.info(f"去重时间窗口已更新为: {value}秒")
+        """去重窗口变更（已移除TTS功能）"""
+        pass
     
-    def quick_pause_tts(self):
-        """快速暂停TTS"""
-        if self.danmu_controller:
-            if self.quick_pause_btn.text() == "快速暂停":
-                self.danmu_controller.pause_tts()
-                self.quick_pause_btn.setText("快速恢复")
-                self.quick_pause_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #4CAF50;
-                        color: white;
-                        border: none;
-                        padding: 8px 16px;
-                        border-radius: 4px;
-                        font-weight: bold;
-                    }
-                    QPushButton:hover {
-                        background-color: #45a049;
-                    }
-                """)
-            else:
-                self.danmu_controller.resume_tts()
-                self.quick_pause_btn.setText("快速暂停")
-                self.quick_pause_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #FF9800;
-                        color: white;
-                        border: none;
-                        padding: 8px 16px;
-                        border-radius: 4px;
-                        font-weight: bold;
-                    }
-                    QPushButton:hover {
-                        background-color: #F57C00;
-                    }
-                """)
-    
-    def quick_clear_cache(self):
-        """快速清空缓存"""
-        if self.danmu_controller:
-            self.danmu_controller.clear_tts_cache()
-    
-    def test_tts(self):
-        """测试TTS功能"""
-        test_message = self.test_message_input.text().strip()
-        if test_message and self.danmu_controller:
-            self.danmu_controller.force_play_message(test_message, priority=1)
-            g_logger.info(f"发送测试TTS消息: {test_message}")
+    def on_tts_config_changed(self):
+        """TTS配置变更时的处理"""
+        if self.danmu_controller and self.danmu_controller.tts_controller:
+            # 读取当前配置并传递给TTS控制器
+            tts_config = {
+                'voice': self.config_manager.tts_settings.voice,
+                'rate': self.config_manager.tts_settings.rate,
+                'volume': self.config_manager.tts_settings.volume,
+                'playback_volume': self.config_manager.tts_settings.playback_volume,
+                'play_interval': self.config_manager.tts_settings.play_interval,
+                'max_queue_size': self.config_manager.tts_settings.max_queue_size
+            }
+            self.danmu_controller.update_tts_config(tts_config)
+            g_logger.debug("TTS配置已更新到控制器")
     
     def update_danmu_list(self):
         """更新弹幕列表"""
@@ -646,44 +540,29 @@ class OptimizedRoom(QWidget):
         # 获取性能统计
         if self.danmu_controller:
             stats = self.danmu_controller.get_performance_stats()
-            self.total_tts = stats.get('tts_messages', 0)
             self.total_filtered = stats.get('filtered_messages', 0)
             
-            self.tts_count_label.setText(f"TTS: {self.total_tts} 条")
             self.filter_count_label.setText(f"过滤: {self.total_filtered} 条")
             
-            # 更新底部状态栏
-            tts_success_rate = stats.get('tts_success_rate', 0)
-            cache_hit_rate = stats.get('tts_handler_stats', {}).get('cache_hit_rate', 0)
-            queue_size = stats.get('queue_stats', {}).get('queue_size', 0)
-            
-            self.tts_success_label.setText(f"TTS成功率: {tts_success_rate:.1%}")
-            self.cache_hit_label.setText(f"缓存命中率: {cache_hit_rate:.1%}")
-            self.queue_size_label.setText(f"队列: {queue_size}")
-    
-    def update_performance_info(self):
-        """更新性能信息"""
-        if self.danmu_controller:
-            try:
-                stats = self.danmu_controller.get_performance_stats()
+            # 更新TTS统计
+            if self.danmu_controller.tts_controller:
+                tts_stats = self.danmu_controller.tts_controller.get_stats()
+                self.tts_count_label.setText(f"TTS: {tts_stats.get('total_played', 0)} 条")
                 
-                # 更新性能标签
-                message_rate = stats.get('messages_per_second', 0)
-                if message_rate > 10:
-                    self.performance_label.setText("性能: 高负载")
-                    self.performance_label.setStyleSheet("color: #f44336; font-weight: bold; font-size: 12px;")
-                elif message_rate > 5:
-                    self.performance_label.setText("性能: 中等负载")
-                    self.performance_label.setStyleSheet("color: #FF9800; font-weight: bold; font-size: 12px;")
+                # 更新TTS状态标签
+                if self.config_manager.tts_settings.enabled:
+                    if tts_stats.get('is_paused', False):
+                        self.tts_status_label.setText("TTS: 已暂停")
+                        self.tts_status_label.setStyleSheet("color: #FF9800; font-weight: bold; font-size: 12px;")
+                    else:
+                        self.tts_status_label.setText("TTS: 运行中")
+                        self.tts_status_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-size: 12px;")
                 else:
-                    self.performance_label.setText("性能: 正常")
-                    self.performance_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-size: 12px;")
-                
-                # 更新高级设置的统计信息
-                self.update_advanced_stats(stats)
-                
-            except Exception as e:
-                g_logger.error(f"更新性能信息失败: {e}")
+                    self.tts_status_label.setText("TTS: 未启用")
+                    self.tts_status_label.setStyleSheet("color: #9E9E9E; font-weight: bold; font-size: 12px;")
+            
+            # 更新高级设置的统计信息
+            self.update_advanced_stats(stats)
     
     def update_advanced_stats(self, stats):
         """更新高级设置的统计信息"""
@@ -691,26 +570,18 @@ class OptimizedRoom(QWidget):
             stats_text = f"=== 系统性能统计 ===\n"
             stats_text += f"运行时间: {stats.get('runtime_seconds', 0):.1f} 秒\n"
             stats_text += f"总消息数: {stats.get('total_messages', 0)}\n"
-            stats_text += f"TTS消息数: {stats.get('tts_messages', 0)}\n"
             stats_text += f"过滤消息数: {stats.get('filtered_messages', 0)}\n"
-            stats_text += f"消息速率: {stats.get('messages_per_second', 0):.1f} msg/s\n"
-            stats_text += f"TTS成功率: {stats.get('tts_success_rate', 0):.1%}\n\n"
+            stats_text += f"消息速率: {stats.get('messages_per_second', 0):.1f} msg/s\n\n"
             
-            # TTS处理器统计
-            tts_stats = stats.get('tts_handler_stats', {})
-            stats_text += f"=== TTS处理器统计 ===\n"
-            stats_text += f"总播放次数: {tts_stats.get('total_played', 0)}\n"
-            stats_text += f"缓存命中率: {tts_stats.get('cache_hit_rate', 0):.1%}\n"
-            stats_text += f"平均生成时间: {tts_stats.get('avg_generation_time', 0)*1000:.0f}ms\n"
-            stats_text += f"平均播放时间: {tts_stats.get('avg_playback_time', 0)*1000:.0f}ms\n"
-            stats_text += f"缓存大小: {tts_stats.get('cache_size', 0)}\n\n"
-            
-            # 队列统计
-            queue_stats = stats.get('queue_stats', {})
-            stats_text += f"=== 队列统计 ===\n"
-            stats_text += f"队列大小: {queue_stats.get('queue_size', 0)}\n"
-            stats_text += f"过滤率: {queue_stats.get('filter_rate', 0):.1%}\n"
-            stats_text += f"成功率: {queue_stats.get('success_rate', 0):.1%}\n"
+            # 添加TTS统计
+            if self.danmu_controller and self.danmu_controller.tts_controller:
+                tts_stats = self.danmu_controller.tts_controller.get_stats()
+                stats_text += f"=== TTS统计 ===\n"
+                stats_text += f"已生成: {tts_stats.get('total_generated', 0)} 条\n"
+                stats_text += f"已播放: {tts_stats.get('total_played', 0)} 条\n"
+                stats_text += f"队列长度: {tts_stats.get('queue_size', 0)}\n"
+                stats_text += f"缓存命中: {tts_stats.get('cache_hits', 0)} 次\n"
+                stats_text += f"缓存大小: {tts_stats.get('cache_size_mb', 0):.2f} MB\n\n"
             
             self.stats_text.setText(stats_text)
             
@@ -721,9 +592,18 @@ class OptimizedRoom(QWidget):
         """清空弹幕列表"""
         self.danmu_list.clear()
         self.total_received = 0
-        self.total_tts = 0
         self.total_filtered = 0
         self.update_statistics()
+    
+    def refresh_keyword_list(self):
+        """刷新关键词列表"""
+        if self.keyword_panel:
+            self.keyword_panel.load_keywords()
+    
+    def refresh_tts_config(self):
+        """刷新TTS配置"""
+        if self.tts_config_panel:
+            self.tts_config_panel.load_config()
         
     def calculate_center_rect(self, width, height):
         """计算居中矩形"""
@@ -738,6 +618,4 @@ class OptimizedRoom(QWidget):
             self.danmu_controller.cleanup()
         if hasattr(self, 'update_timer'):
             self.update_timer.stop()
-        if hasattr(self, 'performance_timer'):
-            self.performance_timer.stop()
         event.accept()

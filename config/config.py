@@ -1,38 +1,7 @@
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
-from dataclasses import dataclass, field, asdict
-
-
-@dataclass
-class TTSSettings:
-    """TTS相关设置"""
-    tts_enabled: bool = True
-    # 各种消息类型的TTS开关
-    chat_tts: bool = True
-    gift_tts: bool = True
-    like_tts: bool = True
-    member_tts: bool = True
-    social_tts: bool = True
-    fansclub_tts: bool = True
-    enter_tts_enabled: bool = False
-    enter_tts_templates: List[str] = field(default_factory=lambda: ["欢迎{user_name}进入直播间"])
-    follow_tts_enabled: bool = False
-    follow_tts_templates: List[str] = field(default_factory=lambda: ["感谢{user_name}的关注"])
-    gift_tts_enabled: bool = False
-    gift_tts_templates: List[str] = field(default_factory=lambda: [
-        "感谢{user_name}送出的{gift_name}",
-        "{user_name}送出了礼物，感谢支持"
-    ])
-    keyword_tts_enabled: bool = False
-    keyword_reply_templates: Dict[str, List[str]] = field(default_factory=lambda: {
-        "1": ["你好啊{user_name}", "欢迎来到直播间{user_name}"],
-        "问题": ["这是一个好问题", "让我想想怎么回答{user_name}"],
-        "帮助": ["有什么可以帮助你的吗"]
-    })
-    volume: int = 70
-    voice: int = 0
-    speed: int = 10
+from typing import Dict
+from dataclasses import dataclass, asdict
 
 
 @dataclass
@@ -52,6 +21,31 @@ class DanmuSettings:
     WebcastRoomStreamAdaptationMessage: bool = True
 
 
+@dataclass
+class TTSSettings:
+    """TTS语音合成设置"""
+    enabled: bool = True
+    voice: str = '晓晓'
+    rate: str = '+0%'
+    volume: str = '+0%'
+    playback_volume: int = 80
+    play_interval: float = 0.5
+    max_queue_size: int = 30
+    cache_dir: str = 'output/cache'
+    cache_max_age: int = 86400
+    cache_max_size_mb: int = 500
+    enable_cache: bool = True
+    event_announcement: dict = None
+    keyword_rules: dict = None
+    
+    def __post_init__(self):
+        """初始化后处理"""
+        if self.event_announcement is None:
+            self.event_announcement = {}
+        if self.keyword_rules is None:
+            self.keyword_rules = {}
+
+
 class LiveConfig:
     """简单的配置管理器"""
     
@@ -63,8 +57,8 @@ class LiveConfig:
             config_file: 配置文件路径
         """
         self.config_file = Path(config_file)
-        self.tts_settings = TTSSettings()
         self.danmu_settings = DanmuSettings()
+        self.tts_settings = TTSSettings()
         
         # 配置变更回调函数列表
         self._config_change_callbacks = []
@@ -79,17 +73,17 @@ class LiveConfig:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 
-                # 更新TTS设置
-                tts_data = data.get("tts_settings", {})
-                for key, value in tts_data.items():
-                    if hasattr(self.tts_settings, key):
-                        setattr(self.tts_settings, key, value)
-                
                 # 更新弹幕设置
                 danmu_data = data.get("danmu_settings", {})
                 for key, value in danmu_data.items():
                     if hasattr(self.danmu_settings, key):
                         setattr(self.danmu_settings, key, value)
+                
+                # 更新TTS设置
+                tts_data = data.get("tts_settings", {})
+                for key, value in tts_data.items():
+                    if hasattr(self.tts_settings, key):
+                        setattr(self.tts_settings, key, value)
                 
                 print(f"配置已从 {self.config_file} 加载")
                 return True
@@ -109,8 +103,8 @@ class LiveConfig:
             
             # 保存配置
             config_data = {
-                "tts_settings": asdict(self.tts_settings),
-                "danmu_settings": asdict(self.danmu_settings)
+                "danmu_settings": asdict(self.danmu_settings),
+                "tts_settings": asdict(self.tts_settings)
             }
             
             with open(self.config_file, 'w', encoding='utf-8') as f:
@@ -122,16 +116,6 @@ class LiveConfig:
             print(f"保存配置失败: {e}")
             return False
     
-    def update_tts_setting(self, key: str, value) -> bool:
-        """更新TTS设置并自动保存"""
-        if hasattr(self.tts_settings, key):
-            setattr(self.tts_settings, key, value)
-            success = self.save()
-            if success:
-                self._notify_config_change('tts', key, value)
-            return success
-        return False
-    
     def update_danmu_setting(self, key: str, value) -> bool:
         """更新弹幕设置并自动保存"""
         if hasattr(self.danmu_settings, key):
@@ -142,30 +126,34 @@ class LiveConfig:
             return success
         return False
     
-    def add_keyword_reply(self, keyword: str, replies: List[str]) -> bool:
-        """添加关键词回复并自动保存"""
-        self.tts_settings.keyword_reply_templates[keyword] = replies
-        success = self.save()
-        if success:
-            self._notify_config_change('tts', 'keyword_reply_templates', self.tts_settings.keyword_reply_templates)
-        return success
-    
-    def remove_keyword(self, keyword: str) -> bool:
-        """移除关键词回复并自动保存"""
-        if keyword in self.tts_settings.keyword_reply_templates:
-            del self.tts_settings.keyword_reply_templates[keyword]
+    def update_tts_setting(self, key: str, value) -> bool:
+        """更新TTS设置并自动保存"""
+        if hasattr(self.tts_settings, key):
+            setattr(self.tts_settings, key, value)
             success = self.save()
             if success:
-                self._notify_config_change('tts', 'keyword_reply_templates', self.tts_settings.keyword_reply_templates)
+                self._notify_config_change('tts', key, value)
             return success
         return False
     
-    def to_dict(self) -> dict:
-        """转换为字典"""
-        return {
-            "tts_settings": asdict(self.tts_settings),
-            "danmu_settings": asdict(self.danmu_settings)
-        }
+    def add_keyword_rule(self, keyword: str, rule: dict) -> bool:
+        """添加关键词规则"""
+        self.tts_settings.keyword_rules[keyword] = rule
+        return self.save()
+    
+    def remove_keyword_rule(self, keyword: str) -> bool:
+        """移除关键词规则"""
+        if keyword in self.tts_settings.keyword_rules:
+            del self.tts_settings.keyword_rules[keyword]
+            return self.save()
+        return False
+    
+    def update_keyword_rule(self, keyword: str, rule: dict) -> bool:
+        """更新关键词规则"""
+        if keyword in self.tts_settings.keyword_rules:
+            self.tts_settings.keyword_rules[keyword] = rule
+            return self.save()
+        return False
     
     def add_config_change_callback(self, callback):
         """添加配置变更回调函数"""
@@ -190,6 +178,12 @@ class LiveConfig:
             
     def __str__(self) -> str:
         """转换为可读字符串"""
+    def to_dict(self) -> dict:
+        """转换为字典"""
+        return {
+            "danmu_settings": asdict(self.danmu_settings),
+            "tts_settings": asdict(self.tts_settings)
+        }
         return json.dumps(self.to_dict(), ensure_ascii=False, indent=2)
 
 
@@ -200,36 +194,22 @@ if __name__ == "__main__":
     # 1. 创建配置管理器
     config = LiveConfig("my_config.json")
     
-    # 2. 访问配置
-    print(f"当前音量: {config.tts_settings.volume}")
-    print(f"是否启用TTS: {config.tts_settings.tts_enabled}")
-    print(f"关键词列表: {list(config.tts_settings.keyword_reply_templates.keys())}")
-    
-    # 3. 修改配置并自动保存
-    print("\n修改配置...")
-    config.update_tts_setting("volume", 80)  # 修改音量并保存
-    config.update_tts_setting("speed", 12)   # 修改语速并保存
-    
-    # 4. 添加新的关键词回复
-    config.add_keyword_reply("谢谢", ["感谢{user_name}的支持", "不用客气"])
-    
-    # 5. 修改弹幕设置
+    # 2. 修改弹幕设置
     config.update_danmu_setting("WebcastLikeMessage", False)
     
-    # 6. 查看完整配置
+    # 3. 查看完整配置
     print("\n当前完整配置:")
     print(config)
     
-    # 7. 重新加载配置（例如在其他地方修改了文件）
+    # 4. 重新加载配置（例如在其他地方修改了文件）
     print("\n重新加载配置...")
     config.load()
-    print(f"重新加载后的音量: {config.tts_settings.volume}")
     
-    # 8. 使用不同路径的配置文件
+    # 5. 使用不同路径的配置文件
     print("\n使用不同路径的配置文件...")
     config2 = LiveConfig("another_config.json")
-    config2.update_tts_setting("volume", 60)
+    config2.update_danmu_setting("WebcastLikeMessage", True)
     
-    # 9. 创建默认配置（用于新程序）
+    # 6. 创建默认配置（用于新程序）
     default_config = LiveConfig("default_config.json")
     # 首次运行会自动创建带有默认值的配置文件
